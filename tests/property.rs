@@ -63,7 +63,7 @@ fn property_listener_is_notified() {
     let mut p = Property::new(10);
     {
         let test_val = test_val.clone();
-        p.add_listener_and_fire(move |&val| test_val.set(val));
+        p.add_listener_and_fire(move |sender| test_val.set(*sender.get()));
     }
 
     assert_that(&test_val.get()).is_equal_to(&10);
