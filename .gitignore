@@ -2,5 +2,9 @@
 target
 Cargo.lock
 
+# IDEA
+.idea/libraries/
+.idea/workspace.xml
+
 # Mac
 .DS_Store
