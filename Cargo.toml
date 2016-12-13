@@ -3,5 +3,8 @@ name = "pebl"
 version = "0.1.0"
 authors = ["David Herman <d9n.coding@gmail.com>"]
 
+[dependencies]
+num = "0.1.36"
+
 [dev-dependencies]
-spectral = "*"
+spectral = "0.5.2"
