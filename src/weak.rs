@@ -17,8 +17,8 @@ impl<T> WeakList<T> {
         WeakList::<T> { items: RefCell::new(Vec::new()) }
     }
 
-    pub fn push(&mut self, observer: &Rc<T>) {
-        self.items.borrow_mut().push(Rc::downgrade(observer));
+    pub fn push(&mut self, item: &Rc<T>) {
+        self.items.borrow_mut().push(Rc::downgrade(item));
     }
 
     pub fn iter(&self) -> WeakListIterator<T> {
