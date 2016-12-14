@@ -17,6 +17,15 @@ impl<T: ?Sized> WeakList<T> {
         WeakList::<T> { items: RefCell::new(Vec::new()) }
     }
 
+    pub fn of(items: &[Rc<T>]) -> Self {
+        let mut weak_vec: Vec<Weak<T>> = Vec::new();
+        for item in items {
+            weak_vec.push(Rc::downgrade(item))
+        }
+
+        WeakList { items: RefCell::new(weak_vec) }
+    }
+
     pub fn push(&mut self, item: &Rc<T>) {
         self.items.borrow_mut().push(Rc::downgrade(item));
     }
@@ -33,8 +42,12 @@ impl<T: ?Sized> WeakList<T> {
         v
     }
 
-    #[cfg(test)]
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
+        self.clean();
+        self.len_no_clean()
+    }
+
+    fn len_no_clean(&self) -> usize {
         self.items.borrow().len()
     }
 
@@ -95,11 +108,25 @@ mod private_api_tests {
             let int2 = Rc::new(20);
             list.push(&int2);
 
-            assert_that(&list.len()).is_equal_to(&2);
+            assert_that(&list.len_no_clean()).is_equal_to(&2);
         }
-        assert_that(&list.len()).is_equal_to(&2);
+        assert_that(&list.len_no_clean()).is_equal_to(&2);
 
         for _ in list.iter() {} // Once iteration is done, dead weak refs are removed
+        assert_that(&list.len_no_clean()).is_equal_to(&1);
+    }
+
+    #[test]
+    fn weak_list_is_cleaned_after_len_is_called() {
+        let mut list = WeakList::<i32>::new();
+        let int1 = Rc::new(10);
+        list.push(&int1);
+        {
+            let int2 = Rc::new(20);
+            list.push(&int2);
+
+        }
+        assert_that(&list.len_no_clean()).is_equal_to(&2);
         assert_that(&list.len()).is_equal_to(&1);
     }
 
@@ -122,6 +149,7 @@ mod private_api_tests {
     }
 
     #[test]
+    #[allow(dead_code)]
     fn weak_list_works_with_unsized_types() {
         trait DynamicallySized {}
         struct NoInt;
@@ -139,6 +167,6 @@ mod private_api_tests {
         list.push(&item2);
         list.push(&item3);
 
-        assert_that(&list.len()).is_equal_to(&3);
+        assert_that(&list.len_no_clean()).is_equal_to(&3);
     }
 }

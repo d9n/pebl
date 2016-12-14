@@ -74,3 +74,15 @@ fn can_create_weak_list_with_struct() {
     assert_that(&pt_sum.y).is_equal_to(&60);
 }
 
+#[test]
+fn can_create_weak_list_from_slice() {
+    let slice = &[Rc::new(1), Rc::new(2), Rc::new(3)];
+    let list = WeakList::of(slice);
+
+    let mut sum = 0;
+    for i in list.iter() {
+        sum += *i;
+    }
+    assert_that(&sum).is_equal_to(&6);
+}
+
