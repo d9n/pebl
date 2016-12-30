@@ -2,17 +2,17 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::rc::Weak;
 
-pub struct WeakList<T> {
+pub struct WeakList<T : ?Sized> {
     // Outer RefCell so that we can clean the vec in notify_invalidated
     items: RefCell<Vec<Weak<T>>>,
 }
 
-pub struct WeakListIterator<'a, T: 'a> {
+pub struct WeakListIterator<'a, T: 'a + ?Sized> {
     weak_list: &'a WeakList<T>,
     index: usize,
 }
 
-impl<T> WeakList<T> {
+impl<T: ?Sized> WeakList<T> {
     pub fn new() -> Self {
         WeakList::<T> { items: RefCell::new(Vec::new()) }
     }
@@ -43,7 +43,7 @@ impl<T> WeakList<T> {
     }
 }
 
-impl<'a, T> Iterator for WeakListIterator<'a, T> {
+impl<'a, T: ?Sized> Iterator for WeakListIterator<'a, T> {
     type Item = Rc<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -66,6 +66,15 @@ impl<'a, T> Iterator for WeakListIterator<'a, T> {
 
         self.weak_list.clean(); // Only do after items is out of scope
         None
+    }
+}
+
+impl<'a, T: ?Sized> IntoIterator for &'a WeakList<T> {
+    type Item = Rc<T>;
+    type IntoIter = WeakListIterator<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
 
@@ -92,5 +101,44 @@ mod private_api_tests {
 
         for _ in list.iter() {} // Once iteration is done, dead weak refs are removed
         assert_that(&list.len()).is_equal_to(&1);
+    }
+
+    #[test]
+    fn weak_list_ref_can_be_used_in_for_loop() {
+        let mut list = WeakList::<&str>::new();
+        let item1 = Rc::new("0");
+        let item2 = Rc::new("1");
+        list.push(&item1);
+        list.push(&item2);
+
+        let mut i = 0;
+        for item in &list {
+            let expected: &str = &i.to_string();
+            let actual: &str = *item;
+            assert_that(&actual).is_equal_to(&expected);
+            i += 1
+        }
+        assert_that(&i).is_equal_to(2);
+    }
+
+    #[test]
+    fn weak_list_works_with_unsized_types() {
+        trait DynamicallySized {}
+        struct NoInt;
+        struct OneInt { a: i32 }
+        struct TwoInts { a: i32, b: i32 }
+        impl DynamicallySized for NoInt {}
+        impl DynamicallySized for OneInt {}
+        impl DynamicallySized for TwoInts {}
+
+        let mut list = WeakList::<DynamicallySized>::new();
+        let item1: Rc<DynamicallySized> = Rc::new(NoInt {});
+        let item2: Rc<DynamicallySized> = Rc::new(OneInt { a: 1 });
+        let item3: Rc<DynamicallySized> = Rc::new(TwoInts { a: 2, b: 3 });
+        list.push(&item1);
+        list.push(&item2);
+        list.push(&item3);
+
+        assert_that(&list.len()).is_equal_to(&3);
     }
 }
