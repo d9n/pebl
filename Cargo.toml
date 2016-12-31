@@ -7,4 +7,4 @@ authors = ["David Herman <d9n.coding@gmail.com>"]
 num = "0.1.36"
 
 [dev-dependencies]
-spectral = "0.5.2"
+spectral = "0.6.0"
