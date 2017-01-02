@@ -5,7 +5,7 @@ pub trait Getter<T: Clone> {
 }
 
 pub trait Setter<T> {
-    fn set(&mut self, T);
+    fn set(&mut self, value: T);
 }
 
 pub struct Property<T: PartialEq + Clone> {
