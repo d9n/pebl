@@ -1,7 +1,12 @@
 use std::fmt;
 use std::marker::PhantomData;
+use std::rc::{Rc, Weak};
 
-struct Value<T: PartialEq> {
+pub trait AsProperty<T: PartialEq> {
+    fn as_property(&self) -> &Property<T>;
+}
+
+pub struct Value<T: PartialEq> {
     value: T,
 }
 
@@ -13,11 +18,12 @@ impl<T: PartialEq> Value<T> {
 
 pub struct Property<T: PartialEq> {
     inner_value: Value<T>,
+    valid: Rc<()>,
 }
 
 impl<T: PartialEq> Property<T> {
     pub fn new(value: T) -> Property<T> {
-        Property { inner_value: Value::new(value) }
+        Property { inner_value: Value::new(value), valid: Rc::new(()) }
     }
 
     pub fn get(&self) -> &T {
@@ -29,16 +35,27 @@ impl<T: PartialEq> Property<T> {
     }
 }
 
+impl<T: PartialEq + Default> Default for Property<T> {
+    fn default() -> Self {
+        Property::new(Default::default())
+    }
+}
+
 impl<T: PartialEq + Default> Property<T> {
     pub fn clear(&mut self) {
         self.set(Default::default());
     }
 }
 
+impl<T: PartialEq> AsProperty<T> for Property<T> {
+    fn as_property(&self) -> &Property<T> {
+        self
+    }
+}
+
 pub struct PropertyRef<'a, T: 'a + PartialEq> {
     value_ptr: *const Value<T>,
     phantom: PhantomData<&'a T>,
-
 }
 
 impl<'a, T: 'a + PartialEq> PropertyRef<'a, T> {
@@ -47,7 +64,7 @@ impl<'a, T: 'a + PartialEq> PropertyRef<'a, T> {
     }
 
     pub fn get(&self) -> &T {
-        unsafe { & (*self.value_ptr).value }
+        unsafe { &(*self.value_ptr).value }
     }
 }
 
@@ -62,7 +79,7 @@ impl<'a, T: 'a + PartialEq> PropertyMutRef<'a, T> {
     }
 
     pub fn get(&self) -> &T {
-        unsafe { & (*self.value_ptr).value }
+        unsafe { &(*self.value_ptr).value }
     }
 
     pub fn set(&mut self, value: T) {
@@ -71,9 +88,21 @@ impl<'a, T: 'a + PartialEq> PropertyMutRef<'a, T> {
     }
 }
 
-impl<T: PartialEq + Default> Default for Property<T> {
-    fn default() -> Self {
-        Property::new(Default::default())
+pub struct PropertyPtr<T: PartialEq> {
+    target: *const Property<T>,
+    valid: Weak<()>,
+}
+
+impl<T: PartialEq> PropertyPtr<T> {
+    pub fn new(target: &Property<T>) -> PropertyPtr<T> {
+        PropertyPtr { target: target, valid: Rc::downgrade(&target.valid) }
+    }
+
+    pub fn get(&self) -> Option<&Property<T>> {
+        if let Some(_) = self.valid.upgrade() {
+            return Some(unsafe { &*self.target });
+        }
+        None
     }
 }
 
@@ -85,12 +114,12 @@ impl<T: PartialEq + fmt::Debug> fmt::Debug for Property<T> {
 
 impl<'a, T: PartialEq + fmt::Debug> fmt::Debug for PropertyRef<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "PropertyRef {{ {:?} }}", self.get())
+        write!(f, "&Property {{ {:?} }}", self.get())
     }
 }
 
 impl<'a, T: PartialEq + fmt::Debug> fmt::Debug for PropertyMutRef<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "PropertyMutRef {{ {:?} }}", self.get())
+        write!(f, "&mut Property {{ {:?} }}", self.get())
     }
 }
