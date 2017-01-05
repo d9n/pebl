@@ -33,6 +33,15 @@ impl<T: PartialEq> Property<T> {
     pub fn set(&mut self, value: T) {
         self.inner_value.value = value;
     }
+
+    pub fn borrow<'a>(&'a self) -> PropertyRef<'a, T> {
+        PropertyRef { value_ptr: &self.inner_value, phantom: PhantomData }
+    }
+
+    pub fn borrow_mut<'a>(&'a mut self) -> PropertyMutRef<'a, T> {
+        PropertyMutRef { value_ptr: &mut self.inner_value, phantom: PhantomData }
+    }
+
 }
 
 impl<T: PartialEq + Default> Default for Property<T> {
@@ -59,10 +68,6 @@ pub struct PropertyRef<'a, T: 'a + PartialEq> {
 }
 
 impl<'a, T: 'a + PartialEq> PropertyRef<'a, T> {
-    pub fn new(p: &'a Property<T>) -> PropertyRef<'a, T> {
-        PropertyRef { value_ptr: &p.inner_value, phantom: PhantomData }
-    }
-
     pub fn get(&self) -> &T {
         unsafe { &(*self.value_ptr).value }
     }
@@ -74,10 +79,6 @@ pub struct PropertyMutRef<'a, T: 'a + PartialEq> {
 }
 
 impl<'a, T: 'a + PartialEq> PropertyMutRef<'a, T> {
-    pub fn new(p: &'a mut Property<T>) -> PropertyMutRef<'a, T> {
-        PropertyMutRef { value_ptr: &mut p.inner_value, phantom: PhantomData }
-    }
-
     pub fn get(&self) -> &T {
         unsafe { &(*self.value_ptr).value }
     }

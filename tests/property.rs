@@ -52,7 +52,7 @@ fn property_clear() {
 #[test]
 fn property_ref() {
     let p = Property::new(123);
-    let p_ref = PropertyRef::new(&p);
+    let p_ref = p.borrow();
 
     assert_that(p_ref.get()).is_equal_to(&123);
 }
@@ -60,7 +60,7 @@ fn property_ref() {
 #[test]
 fn property_mut_ref() {
     let mut p = Property::new(123);
-    let mut p_mut_ref = PropertyMutRef::new(&mut p);
+    let mut p_mut_ref = p.borrow_mut();
 
     assert_that(p_mut_ref.get()).is_equal_to(&123);
     p_mut_ref.set(321);
@@ -80,8 +80,8 @@ fn property_classes_implement_debug() {
 
     let p_string = format!("{:?}", p);
     assert_that(&p_string.len()).is_greater_than(0);
-    let p_string = format!("{:?}", PropertyRef::new(&p));
+    let p_string = format!("{:?}", p.borrow());
     assert_that(&p_string.len()).is_greater_than(0);
-    let p_string = format!("{:?}", PropertyMutRef::new(&mut p));
+    let p_string = format!("{:?}", p.borrow_mut());
     assert_that(&p_string.len()).is_greater_than(0);
 }
