@@ -1,5 +1,5 @@
+use std::cell::{RefCell, UnsafeCell};
 use std::fmt;
-use std::marker::PhantomData;
 use std::rc::{Rc, Weak};
 
 pub trait AsProperty<T: PartialEq> {
@@ -16,32 +16,81 @@ impl<T: PartialEq> Value<T> {
     }
 }
 
+struct BorrowCounts {
+    immutable: usize,
+    mutable: bool,
+}
+
+impl BorrowCounts {
+    fn new() -> BorrowCounts {
+        BorrowCounts { immutable: 0, mutable: false }
+    }
+
+    fn count_borrow(&mut self) {
+        if self.mutable {
+            panic!("property already mutably borrowed");
+        }
+
+        self.immutable += 1;
+    }
+
+    fn count_borrow_mut(&mut self) {
+        if self.mutable {
+            panic!("property already mutably borrowed");
+        }
+
+        if self.immutable > 0 {
+            panic!("property already immutably borrowed");
+        }
+
+        self.mutable = true;
+    }
+
+    fn count_unborrow(&mut self) {
+        if self.immutable == 0 {
+            panic!("invalid immutable release borrow");
+        }
+
+        self.immutable -= 1;
+    }
+
+    fn count_unborrow_mut(&mut self) {
+        if !self.mutable {
+            panic!("invalid mutable release borrow");
+        }
+
+        self.mutable = false;
+    }
+}
+
 pub struct Property<T: PartialEq> {
-    inner_value: Value<T>,
-    valid: Rc<()>,
+    value_cell: UnsafeCell<Value<T>>,
+    borrow_counts: Rc<RefCell<BorrowCounts>>,
 }
 
 impl<T: PartialEq> Property<T> {
     pub fn new(value: T) -> Property<T> {
-        Property { inner_value: Value::new(value), valid: Rc::new(()) }
+        Property {
+            value_cell: UnsafeCell::new(Value::new(value)),
+            borrow_counts: Rc::new(RefCell::new(BorrowCounts::new()))
+        }
     }
 
     pub fn get(&self) -> &T {
-        &self.inner_value.value
+        unsafe { &(*self.value_cell.get()).value }
     }
 
     pub fn set(&mut self, value: T) {
-        self.inner_value.value = value;
+        unsafe { (*self.value_cell.get()).value = value; }
     }
 
     pub fn borrow<'a>(&'a self) -> PropertyRef<'a, T> {
-        PropertyRef { value_ptr: &self.inner_value, phantom: PhantomData }
+        PropertyRef::new(&self.value_cell, self.borrow_counts.clone())
     }
 
     pub fn borrow_mut<'a>(&'a mut self) -> PropertyMutRef<'a, T> {
-        PropertyMutRef { value_ptr: &mut self.inner_value, phantom: PhantomData }
+        PropertyMutRef::new(&self.value_cell, self.borrow_counts.clone())
     }
-
 }
 
 impl<T: PartialEq + Default> Default for Property<T> {
@@ -63,45 +112,82 @@ impl<T: PartialEq> AsProperty<T> for Property<T> {
 }
 
 pub struct PropertyRef<'a, T: 'a + PartialEq> {
-    value_ptr: *const Value<T>,
-    phantom: PhantomData<&'a T>,
+    value_cell: &'a UnsafeCell<Value<T>>,
+    borrow_counts: Rc<RefCell<BorrowCounts>>,
 }
 
 impl<'a, T: 'a + PartialEq> PropertyRef<'a, T> {
+    fn new(value_cell: &'a UnsafeCell<Value<T>>, borrow_counts: Rc<RefCell<BorrowCounts>>) -> PropertyRef<'a, T> {
+        borrow_counts.borrow_mut().count_borrow(); // Uncounted on Drop
+        PropertyRef {
+            value_cell: value_cell,
+            borrow_counts: borrow_counts
+        }
+    }
+
     pub fn get(&self) -> &T {
-        unsafe { &(*self.value_ptr).value }
+        unsafe { &(*self.value_cell.get()).value }
+    }
+}
+
+impl<'a, T: 'a + PartialEq> Drop for PropertyRef<'a, T> {
+    fn drop(&mut self) {
+        (*self.borrow_counts.borrow_mut()).count_unborrow();
     }
 }
 
 pub struct PropertyMutRef<'a, T: 'a + PartialEq> {
-    value_ptr: *mut Value<T>,
-    phantom: PhantomData<&'a T>,
+    value_cell: &'a UnsafeCell<Value<T>>,
+    borrow_counts: Rc<RefCell<BorrowCounts>>,
 }
 
 impl<'a, T: 'a + PartialEq> PropertyMutRef<'a, T> {
+    fn new(value_cell: &'a UnsafeCell<Value<T>>, borrow_counts: Rc<RefCell<BorrowCounts>>) -> PropertyMutRef<'a, T> {
+        borrow_counts.borrow_mut().count_borrow_mut(); // Uncounted on Drop
+        PropertyMutRef {
+            value_cell: value_cell,
+            borrow_counts: borrow_counts
+        }
+    }
+
     pub fn get(&self) -> &T {
-        unsafe { &(*self.value_ptr).value }
+        unsafe { &(*self.value_cell.get()).value }
     }
 
     pub fn set(&mut self, value: T) {
-        let value_ref = unsafe { &mut *self.value_ptr };
-        value_ref.value = value;
+        unsafe { (*self.value_cell.get()).value = value; }
     }
 }
 
+impl<'a, T: 'a + PartialEq> Drop for PropertyMutRef<'a, T> {
+    fn drop(&mut self) {
+        (*self.borrow_counts.borrow_mut()).count_unborrow_mut();
+    }
+}
+
+
 pub struct PropertyPtr<T: PartialEq> {
-    target: *const Property<T>,
-    valid: Weak<()>,
+    value_cell_ptr: *const UnsafeCell<Value<T>>,
+    weak_borrow_counts: Weak<RefCell<BorrowCounts>>,
 }
 
 impl<T: PartialEq> PropertyPtr<T> {
     pub fn new(target: &Property<T>) -> PropertyPtr<T> {
-        PropertyPtr { target: target, valid: Rc::downgrade(&target.valid) }
+        PropertyPtr { value_cell_ptr: &target.value_cell, weak_borrow_counts: Rc::downgrade(&target.borrow_counts) }
     }
 
-    pub fn get(&self) -> Option<&Property<T>> {
-        if let Some(_) = self.valid.upgrade() {
-            return Some(unsafe { &*self.target });
+    pub fn get<'a>(&'a self) -> Option<PropertyRef<'a, T>> {
+        if let Some(borrow_counts) = self.weak_borrow_counts.upgrade() {
+            // By sanity checking self.borrow_counts, we know this is safe to deref
+            return Some(PropertyRef::new(unsafe { &*self.value_cell_ptr }, borrow_counts));
+        }
+        None
+    }
+
+    pub fn get_mut<'a>(&'a mut self) -> Option<PropertyMutRef<'a, T>> {
+        if let Some(borrow_counts) = self.weak_borrow_counts.upgrade() {
+            // By sanity checking self.borrow_counts, we know this is safe to deref
+            return Some(PropertyMutRef::new(unsafe { &*self.value_cell_ptr }, borrow_counts));
         }
         None
     }

@@ -5,15 +5,17 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::ops::AddAssign;
 
+type ExprMethod<I, O> = Fn(&Vec<PropertyRef<I>>) -> O;
+
 pub struct Expression<I: PartialEq, O: PartialEq> {
     property: Property<O>,
     targets: Vec<PropertyPtr<I>>,
-    map: Box<Fn(&Vec<&Property<I>>) -> O>,
+    map: Box<ExprMethod<I, O>>,
     phantom: PhantomData<I>,
 }
 
 impl<I: PartialEq, O: PartialEq> Expression<I, O> {
-    pub fn new(targets: &[&AsProperty<I>], map: Box<Fn(&Vec<&Property<I>>) -> O>) -> Self {
+    pub fn new(targets: &[&AsProperty<I>], map: Box<ExprMethod<I, O>>) -> Self {
         let mut v: Vec<PropertyPtr<I>> = Vec::with_capacity(targets.len());
         for t in targets {
             v.push(PropertyPtr::new(t.as_property()));
@@ -35,10 +37,10 @@ impl<I: PartialEq, O: PartialEq> Expression<I, O> {
         self.property.set(Expression::run(&self.targets, &self.map));
     }
 
-    fn run(vec_ptrs: &Vec<PropertyPtr<I>>, f: &Box<Fn(&Vec<&Property<I>>) -> O>) -> O {
-        let mut vec: Vec<&Property<I>> = Vec::with_capacity(vec_ptrs.len());
+    fn run(vec_ptrs: &Vec<PropertyPtr<I>>, f: &Box<ExprMethod<I, O>>) -> O {
+        let mut vec: Vec<PropertyRef<I>> = Vec::with_capacity(vec_ptrs.len());
         for v in vec_ptrs {
-            if let Some(ref p_ref) = v.get() {
+            if let Some(p_ref) = v.get() {
                 vec.push(p_ref);
             }
         }
