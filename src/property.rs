@@ -6,16 +6,6 @@ pub trait AsProperty<T: PartialEq> {
     fn as_property(&self) -> &Property<T>;
 }
 
-pub struct Value<T: PartialEq> {
-    value: T,
-}
-
-impl<T: PartialEq> Value<T> {
-    fn new(value: T) -> Value<T> {
-        Value { value: value }
-    }
-}
-
 struct BorrowCounts {
     immutable: usize,
     mutable: bool,
@@ -64,24 +54,24 @@ impl BorrowCounts {
 }
 
 pub struct Property<T: PartialEq> {
-    value_cell: UnsafeCell<Value<T>>,
+    value_cell: UnsafeCell<T>,
     borrow_counts: Rc<RefCell<BorrowCounts>>,
 }
 
 impl<T: PartialEq> Property<T> {
     pub fn new(value: T) -> Property<T> {
         Property {
-            value_cell: UnsafeCell::new(Value::new(value)),
+            value_cell: UnsafeCell::new(value),
             borrow_counts: Rc::new(RefCell::new(BorrowCounts::new()))
         }
     }
 
     pub fn get(&self) -> &T {
-        unsafe { &(*self.value_cell.get()).value }
+        unsafe { &*self.value_cell.get() }
     }
 
     pub fn set(&mut self, value: T) {
-        unsafe { (*self.value_cell.get()).value = value; }
+        unsafe { *self.value_cell.get() = value; }
     }
 
     pub fn borrow<'a>(&'a self) -> PropertyRef<'a, T> {
@@ -112,12 +102,12 @@ impl<T: PartialEq> AsProperty<T> for Property<T> {
 }
 
 pub struct PropertyRef<'a, T: 'a + PartialEq> {
-    value_cell: &'a UnsafeCell<Value<T>>,
+    value_cell: &'a UnsafeCell<T>,
     borrow_counts: Rc<RefCell<BorrowCounts>>,
 }
 
 impl<'a, T: 'a + PartialEq> PropertyRef<'a, T> {
-    fn new(value_cell: &'a UnsafeCell<Value<T>>, borrow_counts: Rc<RefCell<BorrowCounts>>) -> PropertyRef<'a, T> {
+    fn new(value_cell: &'a UnsafeCell<T>, borrow_counts: Rc<RefCell<BorrowCounts>>) -> PropertyRef<'a, T> {
         borrow_counts.borrow_mut().count_borrow(); // Uncounted on Drop
         PropertyRef {
             value_cell: value_cell,
@@ -126,7 +116,7 @@ impl<'a, T: 'a + PartialEq> PropertyRef<'a, T> {
     }
 
     pub fn get(&self) -> &T {
-        unsafe { &(*self.value_cell.get()).value }
+        unsafe { &*self.value_cell.get() }
     }
 }
 
@@ -137,12 +127,12 @@ impl<'a, T: 'a + PartialEq> Drop for PropertyRef<'a, T> {
 }
 
 pub struct PropertyMutRef<'a, T: 'a + PartialEq> {
-    value_cell: &'a UnsafeCell<Value<T>>,
+    value_cell: &'a UnsafeCell<T>,
     borrow_counts: Rc<RefCell<BorrowCounts>>,
 }
 
 impl<'a, T: 'a + PartialEq> PropertyMutRef<'a, T> {
-    fn new(value_cell: &'a UnsafeCell<Value<T>>, borrow_counts: Rc<RefCell<BorrowCounts>>) -> PropertyMutRef<'a, T> {
+    fn new(value_cell: &'a UnsafeCell<T>, borrow_counts: Rc<RefCell<BorrowCounts>>) -> PropertyMutRef<'a, T> {
         borrow_counts.borrow_mut().count_borrow_mut(); // Uncounted on Drop
         PropertyMutRef {
             value_cell: value_cell,
@@ -151,11 +141,11 @@ impl<'a, T: 'a + PartialEq> PropertyMutRef<'a, T> {
     }
 
     pub fn get(&self) -> &T {
-        unsafe { &(*self.value_cell.get()).value }
+        unsafe { &*self.value_cell.get() }
     }
 
     pub fn set(&mut self, value: T) {
-        unsafe { (*self.value_cell.get()).value = value; }
+        unsafe { *self.value_cell.get() = value; }
     }
 }
 
@@ -167,7 +157,7 @@ impl<'a, T: 'a + PartialEq> Drop for PropertyMutRef<'a, T> {
 
 
 pub struct PropertyPtr<T: PartialEq> {
-    value_cell_ptr: *const UnsafeCell<Value<T>>,
+    value_cell_ptr: *const UnsafeCell<T>,
     weak_borrow_counts: Weak<RefCell<BorrowCounts>>,
 }
 
