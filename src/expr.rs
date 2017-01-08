@@ -10,21 +10,21 @@ type ExprMethod<I, O> = Fn(&Vec<PropertyRef<I>>) -> O;
 pub struct Expression<I: PartialEq, O: PartialEq> {
     property: Property<O>,
     targets: Vec<PropertyPtr<I>>,
-    map: Box<ExprMethod<I, O>>,
+    resolve: Box<ExprMethod<I, O>>,
     phantom: PhantomData<I>,
 }
 
 impl<I: PartialEq, O: PartialEq> Expression<I, O> {
-    pub fn new(targets: &[&AsProperty<I>], map: Box<ExprMethod<I, O>>) -> Self {
+    pub fn new(targets: &[&AsProperty<I>], resolve: Box<ExprMethod<I, O>>) -> Self {
         let mut v: Vec<PropertyPtr<I>> = Vec::with_capacity(targets.len());
         for t in targets {
             v.push(PropertyPtr::new(t.as_property()));
         }
 
         Expression {
-            property: Property::new(Expression::run(&v, &map)),
+            property: Property::new(Expression::run(&v, &resolve)),
             targets: v,
-            map: map,
+            resolve: resolve,
             phantom: PhantomData,
         }
     }
@@ -34,7 +34,7 @@ impl<I: PartialEq, O: PartialEq> Expression<I, O> {
     }
 
     pub fn update(&mut self) {
-        self.property.set(Expression::run(&self.targets, &self.map));
+        self.property.set(Expression::run(&self.targets, &self.resolve));
     }
 
     fn run(vec_ptrs: &Vec<PropertyPtr<I>>, f: &Box<ExprMethod<I, O>>) -> O {
