@@ -73,14 +73,6 @@ impl<T: PartialEq> Property<T> {
     pub fn set(&mut self, value: T) {
         unsafe { *self.value_cell.get() = value; }
     }
-
-    pub fn borrow<'a>(&'a self) -> PropertyRef<'a, T> {
-        PropertyRef::new(&self.value_cell, self.borrow_counts.clone())
-    }
-
-    pub fn borrow_mut<'a>(&'a mut self) -> PropertyMutRef<'a, T> {
-        PropertyMutRef::new(&self.value_cell, self.borrow_counts.clone())
-    }
 }
 
 impl<T: PartialEq + Default> Default for Property<T> {
@@ -198,5 +190,14 @@ impl<'a, T: PartialEq + fmt::Debug> fmt::Debug for PropertyRef<'a, T> {
 impl<'a, T: PartialEq + fmt::Debug> fmt::Debug for PropertyMutRef<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "&mut Property {{ {:?} }}", self.get())
+    }
+}
+
+impl<T: PartialEq + fmt::Debug> fmt::Debug for PropertyPtr<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        return match self.get() {
+            None => write!(f, "*Property {{ null }}"),
+            Some(ref p) => write!(f, "*Property {{ {:?} }}", p.get())
+        };
     }
 }

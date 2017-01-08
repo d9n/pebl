@@ -50,24 +50,6 @@ fn property_clear() {
 }
 
 #[test]
-fn property_ref() {
-    let p = Property::new(123);
-    let p_ref = p.borrow();
-
-    assert_that(p_ref.get()).is_equal_to(&123);
-}
-
-#[test]
-fn property_mut_ref() {
-    let mut p = Property::new(123);
-    let mut p_mut_ref = p.borrow_mut();
-
-    assert_that(p_mut_ref.get()).is_equal_to(&123);
-    p_mut_ref.set(321);
-    assert_that(p_mut_ref.get()).is_equal_to(&321);
-}
-
-#[test]
 fn property_takes_ownership() {
     let range: Vec<_> = (0..100).collect();
     let _ = Property::new(range);
@@ -76,14 +58,30 @@ fn property_takes_ownership() {
 
 #[test]
 fn property_classes_implement_debug() {
-    let mut p = Property::new(42);
+    let p = Property::new(42);
 
     let p_string = format!("{:?}", p);
-    assert_that(&p_string.len()).is_greater_than(0);
-    let p_string = format!("{:?}", p.borrow());
-    assert_that(&p_string.len()).is_greater_than(0);
-    let p_string = format!("{:?}", p.borrow_mut());
-    assert_that(&p_string.len()).is_greater_than(0);
+    assert_that(&p_string.as_str()).is_equal_to(&"Property { 42 }");
+
+    let mut p_ptr = PropertyPtr::new(&p);
+    let p_string = format!("{:?}", p_ptr);
+    assert_that(&p_string.as_str()).is_equal_to(&"*Property { 42 }");
+
+    {
+        let p_ref = p_ptr.get().unwrap();
+        let p_string = format!("{:?}", p_ref);
+        assert_that(&p_string.as_str()).is_equal_to(&"&Property { 42 }");
+    }
+
+    {
+        let p_ref_mut = p_ptr.get_mut().unwrap();
+        let p_string = format!("{:?}", p_ref_mut);
+        assert_that(&p_string.as_str()).is_equal_to(&"&mut Property { 42 }");
+    }
+
+    drop(p);
+    let p_string = format!("{:?}", p_ptr);
+    assert_that(&p_string.as_str()).is_equal_to(&"*Property { null }");
 }
 
 #[test]
