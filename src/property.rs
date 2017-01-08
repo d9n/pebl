@@ -2,10 +2,6 @@ use std::cell::{RefCell, UnsafeCell};
 use std::fmt;
 use std::rc::{Rc, Weak};
 
-pub trait AsProperty<T: PartialEq> {
-    fn as_property(&self) -> &Property<T>;
-}
-
 struct BorrowCounts {
     immutable: usize,
     mutable: bool,
@@ -87,8 +83,8 @@ impl<T: PartialEq + Default> Property<T> {
     }
 }
 
-impl<T: PartialEq> AsProperty<T> for Property<T> {
-    fn as_property(&self) -> &Property<T> {
+impl<T: PartialEq> AsRef<Property<T>> for Property<T> {
+    fn as_ref(&self) -> &Property<T> {
         self
     }
 }
