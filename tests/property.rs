@@ -107,9 +107,9 @@ fn property_ptr_wraps_target_property() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "property already immutably borrowed")]
 #[allow(unused_variables)] // Variables needed to keep property references alive
-fn getting_read_and_write_properties_from_ptr_panics() {
+fn getting_read_then_write_properties_from_ptr_panics() {
     let p = Property::new(10);
     let p_ptr1 = PropertyPtr::new(&p);
     let mut p_ptr2 = PropertyPtr::new(&p);
@@ -119,7 +119,19 @@ fn getting_read_and_write_properties_from_ptr_panics() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "property already mutably borrowed")]
+#[allow(unused_variables)] // Variables needed to keep property references alive
+fn getting_write_then_read_properties_from_ptr_panics() {
+    let p = Property::new(10);
+    let p_ptr1 = PropertyPtr::new(&p);
+    let mut p_ptr2 = PropertyPtr::new(&p);
+
+    let p_val_mut = p_ptr2.get_mut().unwrap();
+    let p_val_imm = p_ptr1.get().unwrap();
+}
+
+#[test]
+#[should_panic(expected = "property already mutably borrowed")]
 #[allow(unused_variables)] // Variables needed to keep property references alive
 fn getting_multiple_write_properties_from_ptr_panics() {
     let p = Property::new(10);
