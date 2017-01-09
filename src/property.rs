@@ -145,13 +145,18 @@ impl<'a, T: 'a + PartialEq> Drop for PropertyMutRef<'a, T> {
 
 
 pub struct PropertyPtr<T: PartialEq> {
+    pub id: usize,
     value_cell_ptr: *const UnsafeCell<T>,
     weak_borrow_counts: Weak<RefCell<BorrowCounts>>,
 }
 
 impl<T: PartialEq> PropertyPtr<T> {
     pub fn new(target: &Property<T>) -> PropertyPtr<T> {
-        PropertyPtr { value_cell_ptr: &target.value_cell, weak_borrow_counts: Rc::downgrade(&target.borrow_counts) }
+        PropertyPtr {
+            value_cell_ptr: &target.value_cell,
+            weak_borrow_counts: Rc::downgrade(&target.borrow_counts),
+            id: (target as *const Property<T>) as usize,
+        }
     }
 
     pub fn get<'a>(&'a self) -> Option<PropertyRef<'a, T>> {

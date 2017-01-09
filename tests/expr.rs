@@ -4,7 +4,6 @@ extern crate pebl;
 
 use spectral::prelude::*;
 use pebl::prelude::*;
-use pebl::expr;
 
 #[test]
 fn sum_expr_works_with_int() {

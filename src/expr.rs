@@ -2,7 +2,6 @@ use property::*;
 
 use std::boxed::Box;
 use std::fmt;
-use std::marker::PhantomData;
 use std::ops::AddAssign;
 
 type ExprMethod<I, O> = Fn(&Vec<PropertyRef<I>>) -> O;
@@ -11,7 +10,6 @@ pub struct Expression<I: PartialEq, O: PartialEq> {
     property: Property<O>,
     targets: Vec<PropertyPtr<I>>,
     resolve: Box<ExprMethod<I, O>>,
-    phantom: PhantomData<I>,
 }
 
 impl<I: PartialEq, O: PartialEq> Expression<I, O> {
@@ -25,7 +23,6 @@ impl<I: PartialEq, O: PartialEq> Expression<I, O> {
             property: Property::new(Expression::run(&v, &resolve)),
             targets: v,
             resolve: resolve,
-            phantom: PhantomData,
         }
     }
 
