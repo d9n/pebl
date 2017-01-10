@@ -1,9 +1,10 @@
 use std::collections::HashMap;
+use uuid::Uuid;
 
 use property::*;
 
 pub struct Bindings {
-    update_callbacks: HashMap<usize, Box<FnMut()>>,
+    update_callbacks: HashMap<Uuid, Box<FnMut()>>,
 }
 
 impl Bindings {
@@ -15,7 +16,7 @@ impl Bindings {
         let mut p_dest_ptr = PropertyPtr::new(p_dest);
         let p_src_ptr = PropertyPtr::new(p_src.as_ref());
 
-        let key = p_dest_ptr.id;
+        let key = p_dest.id();
         let mut update = Box::new(move || {
             p_dest_ptr.get_mut().unwrap().set(p_src_ptr.get().unwrap().get().clone());
         });
@@ -31,8 +32,7 @@ impl Bindings {
     }
 
     pub fn unbind<T: PartialEq>(&mut self, p_dest: &Property<T>) {
-        let key = PropertyPtr::new(p_dest).id;
-        self.update_callbacks.remove(&key);
+        self.update_callbacks.remove(&p_dest.id());
     }
 
     pub fn clear(&mut self) {

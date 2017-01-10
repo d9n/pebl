@@ -1,6 +1,7 @@
 use std::cell::{RefCell, UnsafeCell};
 use std::fmt;
 use std::rc::{Rc, Weak};
+use uuid::Uuid;
 
 struct BorrowCounts {
     immutable: usize,
@@ -50,6 +51,7 @@ impl BorrowCounts {
 }
 
 pub struct Property<T: PartialEq> {
+    id: Uuid,
     value_cell: UnsafeCell<T>,
     borrow_counts: Rc<RefCell<BorrowCounts>>,
 }
@@ -57,6 +59,7 @@ pub struct Property<T: PartialEq> {
 impl<T: PartialEq> Property<T> {
     pub fn new(value: T) -> Property<T> {
         Property {
+            id: Uuid::new_v4(),
             value_cell: UnsafeCell::new(value),
             borrow_counts: Rc::new(RefCell::new(BorrowCounts::new()))
         }
@@ -68,6 +71,10 @@ impl<T: PartialEq> Property<T> {
 
     pub fn set(&mut self, value: T) {
         unsafe { *self.value_cell.get() = value; }
+    }
+
+    pub fn id(&self) -> Uuid {
+        self.id
     }
 }
 
@@ -145,7 +152,6 @@ impl<'a, T: 'a + PartialEq> Drop for PropertyMutRef<'a, T> {
 
 
 pub struct PropertyPtr<T: PartialEq> {
-    pub id: usize,
     value_cell_ptr: *const UnsafeCell<T>,
     weak_borrow_counts: Weak<RefCell<BorrowCounts>>,
 }
@@ -155,7 +161,6 @@ impl<T: PartialEq> PropertyPtr<T> {
         PropertyPtr {
             value_cell_ptr: &target.value_cell,
             weak_borrow_counts: Rc::downgrade(&target.borrow_counts),
-            id: (target as *const Property<T>) as usize,
         }
     }
 
