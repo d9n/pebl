@@ -37,7 +37,7 @@ impl<I: PartialEq, O: PartialEq> Expression<I, O> {
     fn run(vec_ptrs: &Vec<PropertyPtr<I>>, f: &Box<ExprMethod<I, O>>) -> O {
         let mut vec: Vec<PropertyRef<I>> = Vec::with_capacity(vec_ptrs.len());
         for v in vec_ptrs {
-            if let Some(p_ref) = v.get() {
+            if let Some(p_ref) = v.try_deref() {
                 vec.push(p_ref);
             }
         }

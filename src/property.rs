@@ -164,7 +164,7 @@ impl<T: PartialEq> PropertyPtr<T> {
         }
     }
 
-    pub fn get<'a>(&'a self) -> Option<PropertyRef<'a, T>> {
+    pub fn try_deref<'a>(&'a self) -> Option<PropertyRef<'a, T>> {
         if let Some(borrow_counts) = self.weak_borrow_counts.upgrade() {
             // By sanity checking self.borrow_counts, we know this is safe to deref
             return Some(PropertyRef::new(unsafe { &*self.value_cell_ptr }, borrow_counts));
@@ -172,12 +172,20 @@ impl<T: PartialEq> PropertyPtr<T> {
         None
     }
 
-    pub fn get_mut<'a>(&'a mut self) -> Option<PropertyMutRef<'a, T>> {
+    pub fn try_deref_mut<'a>(&'a mut self) -> Option<PropertyMutRef<'a, T>> {
         if let Some(borrow_counts) = self.weak_borrow_counts.upgrade() {
             // By sanity checking self.borrow_counts, we know this is safe to deref
             return Some(PropertyMutRef::new(unsafe { &*self.value_cell_ptr }, borrow_counts));
         }
         None
+    }
+
+    pub fn deref<'a>(&'a self) -> PropertyRef<'a, T> {
+        self.try_deref().unwrap()
+    }
+
+    pub fn deref_mut<'a>(&'a mut self) -> PropertyMutRef<'a, T> {
+        self.try_deref_mut().unwrap()
     }
 }
 
@@ -210,7 +218,7 @@ impl<'a, T: PartialEq + fmt::Debug> fmt::Debug for PropertyMutRef<'a, T> {
 
 impl<T: PartialEq + fmt::Debug> fmt::Debug for PropertyPtr<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        return match self.get() {
+        return match self.try_deref() {
             None => write!(f, "*Property {{ null }}"),
             Some(ref p) => write!(f, "*Property {{ {:?} }}", p.get())
         };
@@ -246,7 +254,7 @@ impl<T: PartialEq> PropertyList<T> {
     }
 
     fn clean(&self) {
-        self.items.borrow_mut().retain(|p_ptr| { return p_ptr.get().is_some() });
+        self.items.borrow_mut().retain(|p_ptr| { return p_ptr.try_deref().is_some() });
     }
 }
 
@@ -265,7 +273,7 @@ impl<'a, T: 'a + PartialEq> Iterator for PropertyListIterator<'a, T> {
                 let p_ptr = &items[self.index];
                 self.index += 1;
 
-                if p_ptr.get().is_some() {
+                if p_ptr.try_deref().is_some() {
                     return Some(p_ptr.clone());
                 }
             }
@@ -321,7 +329,7 @@ mod private_api_tests {
 
         let mut i = 0;
         for p in &list {
-            assert_that(&i).is_equal_to(p.get().unwrap().get());
+            assert_that(&i).is_equal_to(p.deref().get());
             i += 1;
         }
         assert_that(&i).is_equal_to(3);

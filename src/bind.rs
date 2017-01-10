@@ -18,7 +18,7 @@ impl Bindings {
 
         let key = p_dest.id();
         let mut update = Box::new(move || {
-            p_dest_ptr.get_mut().unwrap().set(p_src_ptr.get().unwrap().get().clone());
+            p_dest_ptr.deref_mut().set(p_src_ptr.deref().get().clone());
         });
 
         (*update)();

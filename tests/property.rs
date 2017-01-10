@@ -68,13 +68,13 @@ fn property_classes_implement_debug() {
     assert_that(&p_string.as_str()).is_equal_to(&"*Property { 42 }");
 
     {
-        let p_ref = p_ptr.get().unwrap();
+        let p_ref = p_ptr.deref();
         let p_string = format!("{:?}", p_ref);
         assert_that(&p_string.as_str()).is_equal_to(&"&Property { 42 }");
     }
 
     {
-        let p_ref_mut = p_ptr.get_mut().unwrap();
+        let p_ref_mut = p_ptr.deref_mut();
         let p_string = format!("{:?}", p_ref_mut);
         assert_that(&p_string.as_str()).is_equal_to(&"&mut Property { 42 }");
     }
@@ -89,12 +89,12 @@ fn property_ptr_wraps_target_property() {
     let p = Property::new(String::from("Hello"));
     let mut p_ptr = PropertyPtr::new(&p);
     {
-        let p_ref = p_ptr.get().unwrap();
+        let p_ref = p_ptr.deref();
         assert_that(p_ref.get()).is_equal_to(String::from("Hello"));
     }
 
     {
-        let mut p_ref = p_ptr.get_mut().unwrap();
+        let mut p_ref = p_ptr.deref_mut();
         p_ref.set(String::from("World"));
         assert_that(p_ref.get()).is_equal_to(String::from("World"));
     }
@@ -102,8 +102,8 @@ fn property_ptr_wraps_target_property() {
     assert_that(p.get()).is_equal_to(String::from("World"));
 
     drop(p);
-    assert_that(&p_ptr.get()).is_none();
-    assert_that(&p_ptr.get_mut()).is_none();
+    assert_that(&p_ptr.try_deref()).is_none();
+    assert_that(&p_ptr.try_deref_mut()).is_none();
 }
 
 #[test]
@@ -114,8 +114,8 @@ fn getting_read_then_write_properties_from_ptr_panics() {
     let p_ptr1 = PropertyPtr::new(&p);
     let mut p_ptr2 = PropertyPtr::new(&p);
 
-    let p_val_imm = p_ptr1.get().unwrap();
-    let p_val_mut = p_ptr2.get_mut().unwrap();
+    let p_val_imm = p_ptr1.deref();
+    let p_val_mut = p_ptr2.deref_mut();
 }
 
 #[test]
@@ -126,8 +126,8 @@ fn getting_write_then_read_properties_from_ptr_panics() {
     let p_ptr1 = PropertyPtr::new(&p);
     let mut p_ptr2 = PropertyPtr::new(&p);
 
-    let p_val_mut = p_ptr2.get_mut().unwrap();
-    let p_val_imm = p_ptr1.get().unwrap();
+    let p_val_mut = p_ptr2.deref_mut();
+    let p_val_imm = p_ptr1.deref();
 }
 
 #[test]
@@ -138,6 +138,6 @@ fn getting_multiple_write_properties_from_ptr_panics() {
     let mut p_ptr1 = PropertyPtr::new(&p);
     let mut p_ptr2 = PropertyPtr::new(&p);
 
-    let p_val_mut1 = p_ptr1.get_mut().unwrap();
-    let p_val_mut2 = p_ptr2.get_mut().unwrap();
+    let p_val_mut1 = p_ptr1.deref_mut();
+    let p_val_mut2 = p_ptr2.deref_mut();
 }
