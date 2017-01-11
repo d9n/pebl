@@ -1,7 +1,9 @@
 use std::cell::{RefCell, UnsafeCell};
 use std::fmt;
 use std::rc::{Rc, Weak};
-use uuid::Uuid;
+use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+
+static PROPERTY_ID_GENERATOR: AtomicUsize = ATOMIC_USIZE_INIT;
 
 struct BorrowCounts {
     immutable: usize,
@@ -51,15 +53,16 @@ impl BorrowCounts {
 }
 
 pub struct Property<T: PartialEq> {
-    id: Uuid,
+    id: usize,
     value_cell: UnsafeCell<T>,
     borrow_counts: Rc<RefCell<BorrowCounts>>,
+
 }
 
 impl<T: PartialEq> Property<T> {
     pub fn new(value: T) -> Property<T> {
         Property {
-            id: Uuid::new_v4(),
+            id: PROPERTY_ID_GENERATOR.fetch_add(1, Ordering::Relaxed),
             value_cell: UnsafeCell::new(value),
             borrow_counts: Rc::new(RefCell::new(BorrowCounts::new()))
         }
@@ -73,7 +76,7 @@ impl<T: PartialEq> Property<T> {
         unsafe { *self.value_cell.get() = value; }
     }
 
-    pub fn id(&self) -> Uuid {
+    pub fn id(&self) -> usize {
         self.id
     }
 }

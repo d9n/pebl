@@ -1,10 +1,9 @@
 use std::collections::HashMap;
-use uuid::Uuid;
 
 use property::*;
 
 pub struct Bindings {
-    update_callbacks: HashMap<Uuid, Box<FnMut()>>,
+    update_callbacks: HashMap<usize, Box<FnMut()>>,
 }
 
 impl Bindings {
