@@ -61,9 +61,12 @@ fn value_takes_ownership() {
 fn value_can_be_observed_for_changes() {
     let mut o = Observable::new(10);
     let count = Rc::new(Cell::new(0));
-    let count_clone = count.clone();
-    let handler = InvalidationHandler::new(move || count_clone.set(count_clone.get() + 1));
-    o.on_invalidated(&handler);
+    let handler;
+    {
+        let count = count.clone();
+        handler = InvalidationHandler::new(move || count.set(count.get() + 1));
+    }
+    o.add_invalidation_handler(&handler);
 
     assert_that(&count.get()).is_equal_to(&0);
 
@@ -81,9 +84,13 @@ fn value_can_be_observed_for_changes() {
 fn invalidation_handler_not_called_after_dropping() {
     let mut o = Observable::new(10);
     let count = Rc::new(Cell::new(0));
-    let count_clone = count.clone();
-    let handler = InvalidationHandler::new(move || count_clone.set(count_clone.get() + 1));
-    o.on_invalidated(&handler);
+
+    let handler;
+    {
+        let count = count.clone();
+        handler = InvalidationHandler::new(move || count.set(count.get() + 1));
+    }
+    o.add_invalidation_handler(&handler);
 
     o.set(20);
     assert_that(&count.get()).is_equal_to(&1);

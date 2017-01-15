@@ -105,7 +105,7 @@ impl<T: PartialEq> Observable<T> {
         self.get_data().set(value);
     }
 
-    pub fn on_invalidated(&self, handler: &InvalidationHandler) {
+    pub fn add_invalidation_handler(&self, handler: &InvalidationHandler) {
         self.get_data().on_invalidated.push(&handler.callback);
     }
 

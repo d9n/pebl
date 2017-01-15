@@ -1,8 +1,10 @@
-use obsv::{Observable, ObservableRef, ObservablePtr};
+use obsv::{InvalidationHandler, Observable, ObservableRef, ObservablePtr};
 
 use std::boxed::Box;
+use std::cell::Cell;
 use std::fmt;
 use std::ops::AddAssign;
+use std::rc::Rc;
 
 type ExprMethod<I, O> = Fn(&Vec<ObservableRef<I>>) -> O;
 
@@ -10,28 +12,42 @@ pub struct Expression<I: PartialEq, O: PartialEq> {
     value: Observable<O>,
     targets: Vec<ObservablePtr<I>>,
     resolve: Box<ExprMethod<I, O>>,
+    #[allow(dead_code)] // Handle reference needed to keep weak reference alive
+    invalidation_handler: InvalidationHandler,
+    dirty: Rc<Cell<bool>>,
 }
 
 impl<I: PartialEq, O: PartialEq> Expression<I, O> {
     pub fn new(targets: &[&AsRef<Observable<I>>], resolve: Box<ExprMethod<I, O>>) -> Self {
-        let mut v: Vec<ObservablePtr<I>> = Vec::with_capacity(targets.len());
+        let dirty = Rc::new(Cell::new(false));
+        let handler;
+        {
+            let dirty = dirty.clone();
+            handler = InvalidationHandler::new(move || dirty.set(true));
+        }
+
+        let mut target_ptrs: Vec<ObservablePtr<I>> = Vec::with_capacity(targets.len());
         for t in targets {
-            v.push(ObservablePtr::new(t.as_ref()));
+            target_ptrs.push(ObservablePtr::new(t.as_ref()));
+            t.as_ref().add_invalidation_handler(&handler);
         }
 
         Expression {
-            value: Observable::new(Expression::run(&v, &resolve)),
-            targets: v,
+            value: Observable::new(Expression::run(&target_ptrs, &resolve)),
+            targets: target_ptrs,
             resolve: resolve,
+            dirty: dirty,
+            invalidation_handler: handler,
         }
     }
 
     pub fn get(&self) -> &O {
-        self.value.get()
-    }
+        if self.dirty.get() {
+            let mut value_ptr = ObservablePtr::new(&self.value);
+            value_ptr.deref_mut().set(Expression::run(&self.targets, &self.resolve));
+        }
 
-    pub fn update(&mut self) {
-        self.value.set(Expression::run(&self.targets, &self.resolve));
+        self.value.get()
     }
 
     fn run(vec_ptrs: &Vec<ObservablePtr<I>>, f: &Box<ExprMethod<I, O>>) -> O {
