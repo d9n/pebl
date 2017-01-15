@@ -24,6 +24,12 @@ fn weak_list_converted_to_strong_using_upgrade() {
 }
 
 #[test]
+fn weak_list_can_be_constructed_with_capacity() {
+    let list = WeakList::<i32>::with_capacity(33);
+    assert_that(&list.capacity()).is_equal_to(33);
+}
+
+#[test]
 fn can_iter_weak_list() {
     let mut list = WeakList::<i32>::new();
     let int1 = Rc::new(10);

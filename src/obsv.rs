@@ -1,6 +1,7 @@
-use std::cell::{RefCell, UnsafeCell};
+use std::cell::UnsafeCell;
 use std::fmt;
 use std::rc::{Rc, Weak};
+use weak::*;
 
 struct BorrowCounts {
     immutable: usize,
@@ -49,121 +50,158 @@ impl BorrowCounts {
     }
 }
 
-pub struct Observable<T> {
-    cell: UnsafeCell<T>,
-    borrow_counts: Rc<RefCell<BorrowCounts>>,
-    // TODO: Listener
+pub struct InvalidationHandler {
+    callback: Rc<Fn()>,
 }
 
-impl<T> Observable<T> {
-    pub fn new(value: T) -> Self {
-        Observable {
-            cell: UnsafeCell::new(value),
-            borrow_counts: Rc::new(RefCell::new(BorrowCounts::new()))
+impl InvalidationHandler {
+    pub fn new<F: 'static + Fn()>(callback: F) -> Self {
+        InvalidationHandler { callback: Rc::new(callback) }
+    }
+}
+
+struct ObservableData<T: PartialEq> {
+    value: T,
+    handle: Rc<()>,
+    borrow_counts: BorrowCounts,
+    on_invalidated: WeakList<Fn()>,
+}
+
+impl<T: PartialEq> ObservableData<T> {
+    fn get(&self) -> &T {
+        &self.value
+    }
+
+    fn set(&mut self, value: T) {
+        if self.value != value {
+            self.value = value;
+            for callback in &self.on_invalidated {
+                callback();
+            }
         }
+    }
+}
+
+pub struct Observable<T: PartialEq> {
+    cell: UnsafeCell<ObservableData<T>>,
+}
+
+impl<T: PartialEq> Observable<T> {
+    pub fn new(value: T) -> Self {
+        let data = ObservableData {
+            value: value,
+            handle: Rc::new(()),
+            borrow_counts: BorrowCounts::new(),
+            on_invalidated: WeakList::with_capacity(1),
+        };
+        Observable { cell: UnsafeCell::new(data) }
     }
 
     pub fn get(&self) -> &T {
-        unsafe { &*self.cell.get() }
+        &self.get_data().get()
     }
 
     pub fn set(&mut self, value: T) {
-        unsafe { *self.cell.get() = value; }
+        self.get_data().set(value);
+    }
+
+    pub fn on_invalidated(&self, handler: &InvalidationHandler) {
+        self.get_data().on_invalidated.push(&handler.callback);
+    }
+
+    fn get_data(&self) -> &mut ObservableData<T> {
+        unsafe { &mut (*self.cell.get()) }
     }
 }
 
-impl<T: Default> Default for Observable<T> {
+impl<T: Default + PartialEq> Default for Observable<T> {
     fn default() -> Self {
         Observable::new(Default::default())
     }
 }
 
-impl<T: Default> Observable<T> {
+impl<T: Default + PartialEq> Observable<T> {
     pub fn clear(&mut self) {
         self.set(Default::default());
     }
 }
 
-pub struct ObservableRef<'a, T: 'a> {
-    value_cell: &'a UnsafeCell<T>,
-    borrow_counts: Rc<RefCell<BorrowCounts>>,
+pub struct ObservableRef<'a, T: 'a + PartialEq> {
+    obsv_ptr: &'a ObservablePtr<T>,
 }
 
-impl<'a, T: 'a> ObservableRef<'a, T> {
-    fn new(value_cell: &'a UnsafeCell<T>, borrow_counts: Rc<RefCell<BorrowCounts>>) -> ObservableRef<'a, T> {
-        borrow_counts.borrow_mut().count_borrow(); // Uncounted on Drop
-        ObservableRef {
-            value_cell: value_cell,
-            borrow_counts: borrow_counts
-        }
+impl<'a, T: 'a + PartialEq> ObservableRef<'a, T> {
+    // Only call this if you know that `data_ptr` can safely be dereferenced
+    fn new(obsv_ptr: &'a ObservablePtr<T>) -> Self {
+        obsv_ptr.deref_data().borrow_counts.count_borrow();
+        ObservableRef { obsv_ptr: obsv_ptr }
     }
 
     pub fn get(&self) -> &T {
-        unsafe { &*self.value_cell.get() }
+        self.obsv_ptr.deref_data().get()
     }
 }
 
-impl<'a, T: 'a> Drop for ObservableRef<'a, T> {
+impl<'a, T: 'a + PartialEq> Drop for ObservableRef<'a, T> {
     fn drop(&mut self) {
-        (*self.borrow_counts.borrow_mut()).count_unborrow();
+        self.obsv_ptr.deref_data().borrow_counts.count_unborrow();
     }
 }
 
-pub struct ObservableMutRef<'a, T: 'a> {
-    value_cell: &'a UnsafeCell<T>,
-    borrow_counts: Rc<RefCell<BorrowCounts>>,
+pub struct ObservableMutRef<'a, T: 'a + PartialEq> {
+    obsv_ptr: &'a ObservablePtr<T>,
 }
 
-impl<'a, T: 'a> ObservableMutRef<'a, T> {
-    fn new(value_cell: &'a UnsafeCell<T>, borrow_counts: Rc<RefCell<BorrowCounts>>) -> ObservableMutRef<'a, T> {
-        borrow_counts.borrow_mut().count_borrow_mut(); // Uncounted on Drop
-        ObservableMutRef {
-            value_cell: value_cell,
-            borrow_counts: borrow_counts
-        }
+impl<'a, T: 'a + PartialEq> ObservableMutRef<'a, T> {
+    // Only call this if you know that `data_ptr` can safely be dereferenced
+    fn new(obsv_ptr: &'a ObservablePtr<T>) -> Self {
+        obsv_ptr.deref_data().borrow_counts.count_borrow_mut(); // Uncounted on Drop
+        ObservableMutRef { obsv_ptr: obsv_ptr }
     }
 
     pub fn get(&self) -> &T {
-        unsafe { &*self.value_cell.get() }
+        &self.obsv_ptr.deref_data().get()
     }
 
     pub fn set(&mut self, value: T) {
-        unsafe { *self.value_cell.get() = value; }
+        self.obsv_ptr.deref_data().set(value);
     }
 }
 
-impl<'a, T: 'a> Drop for ObservableMutRef<'a, T> {
+impl<'a, T: 'a + PartialEq> Drop for ObservableMutRef<'a, T> {
     fn drop(&mut self) {
-        (*self.borrow_counts.borrow_mut()).count_unborrow_mut();
+        self.obsv_ptr.deref_data().borrow_counts.count_unborrow_mut();
     }
 }
 
 
-pub struct ObservablePtr<T> {
-    cell_ptr: *const UnsafeCell<T>,
-    weak_borrow_counts: Weak<RefCell<BorrowCounts>>,
+pub struct ObservablePtr<T: PartialEq> {
+    cell_ptr: *const UnsafeCell<ObservableData<T>>,
+    valid_handle: Weak<()>,
 }
 
-impl<T> ObservablePtr<T> {
+impl<T: PartialEq> ObservablePtr<T> {
     pub fn new(target: &Observable<T>) -> ObservablePtr<T> {
-        ObservablePtr {
+        ObservablePtr::<T> {
             cell_ptr: &target.cell,
-            weak_borrow_counts: Rc::downgrade(&target.borrow_counts),
+            valid_handle: Rc::downgrade(&target.get_data().handle),
         }
     }
 
+    fn can_deref(&self) -> bool {
+        if let Some(_) = self.valid_handle.upgrade() { true } else { false }
+    }
+
     pub fn try_deref<'a>(&'a self) -> Option<ObservableRef<'a, T>> {
-        if let Some(borrow_counts) = self.weak_borrow_counts.upgrade() {
-            // By sanity checking self.borrow_counts, we know this is safe to deref
-            return Some(ObservableRef::new(unsafe { &*self.cell_ptr }, borrow_counts));
+        if self.can_deref() {
+            return Some(ObservableRef::new(self));
         }
         None
     }
 
     pub fn try_deref_mut<'a>(&'a mut self) -> Option<ObservableMutRef<'a, T>> {
-        if let Some(borrow_counts) = self.weak_borrow_counts.upgrade() {
-            // By sanity checking self.borrow_counts, we know this is safe to deref
-            return Some(ObservableMutRef::new(unsafe { &*self.cell_ptr }, borrow_counts));
+        if self.can_deref() {
+            return Some(ObservableMutRef::new(self));
         }
         None
     }
@@ -175,36 +213,41 @@ impl<T> ObservablePtr<T> {
     pub fn deref_mut<'a>(&'a mut self) -> ObservableMutRef<'a, T> {
         self.try_deref_mut().unwrap()
     }
+
+    // Undefined behavior if `can_deref` is not true
+    fn deref_data(&self) -> &mut ObservableData<T> {
+        unsafe { &mut *((*self.cell_ptr).get()) }
+    }
 }
 
-impl<T> Clone for ObservablePtr<T> {
+impl<T: PartialEq> Clone for ObservablePtr<T> {
     fn clone(&self) -> Self {
         ObservablePtr {
             cell_ptr: self.cell_ptr,
-            weak_borrow_counts: self.weak_borrow_counts.clone(),
+            valid_handle: self.valid_handle.clone(),
         }
     }
 }
 
-impl<T: fmt::Debug> fmt::Debug for Observable<T> {
+impl<T: fmt::Debug + PartialEq> fmt::Debug for Observable<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Observable {{ {:?} }}", self.get())
     }
 }
 
-impl<'a, T: fmt::Debug> fmt::Debug for ObservableRef<'a, T> {
+impl<'a, T: fmt::Debug + PartialEq> fmt::Debug for ObservableRef<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "&Observable {{ {:?} }}", self.get())
     }
 }
 
-impl<'a, T: fmt::Debug> fmt::Debug for ObservableMutRef<'a, T> {
+impl<'a, T: fmt::Debug + PartialEq> fmt::Debug for ObservableMutRef<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "&mut Observable {{ {:?} }}", self.get())
     }
 }
 
-impl<T: fmt::Debug> fmt::Debug for ObservablePtr<T> {
+impl<T: fmt::Debug + PartialEq > fmt::Debug for ObservablePtr<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         return match self.try_deref() {
             None => write!(f, "*Observable {{ null }}"),

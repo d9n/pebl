@@ -14,7 +14,11 @@ pub struct WeakListIterator<'a, T: 'a + ?Sized> {
 
 impl<T: ?Sized> WeakList<T> {
     pub fn new() -> Self {
-        WeakList::<T> { items: RefCell::new(Vec::new()) }
+        WeakList::<T>::with_capacity(0)
+    }
+
+    pub fn with_capacity(capacity: usize) -> Self {
+        WeakList { items: RefCell::new(Vec::with_capacity(capacity)) }
     }
 
     pub fn of(items: &[Rc<T>]) -> Self {
@@ -45,6 +49,10 @@ impl<T: ?Sized> WeakList<T> {
     pub fn len(&self) -> usize {
         self.clean();
         self.len_no_clean()
+    }
+
+    pub fn capacity(&self) -> usize {
+        self.items.borrow().capacity()
     }
 
     fn len_no_clean(&self) -> usize {

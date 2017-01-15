@@ -2,6 +2,7 @@
 extern crate spectral;
 extern crate pebl;
 
+use std::cell::Cell;
 use std::rc::Rc;
 use spectral::prelude::*;
 use pebl::prelude::*;
@@ -54,6 +55,43 @@ fn value_takes_ownership() {
     let range: Vec<_> = (0..100).collect();
     let _ = Observable::new(range);
 //    let range_already_taken = range; // As expected, uncommenting causes compile error
+}
+
+#[test]
+fn value_can_be_observed_for_changes() {
+    let mut o = Observable::new(10);
+    let count = Rc::new(Cell::new(0));
+    let count_clone = count.clone();
+    let handler = InvalidationHandler::new(move || count_clone.set(count_clone.get() + 1));
+    o.on_invalidated(&handler);
+
+    assert_that(&count.get()).is_equal_to(&0);
+
+    o.set(20);
+    assert_that(&count.get()).is_equal_to(&1);
+
+    o.set(30);
+    assert_that(&count.get()).is_equal_to(&2);
+
+    o.set(30);
+    assert_that(&count.get()).is_equal_to(&2);
+}
+
+#[test]
+fn invalidation_handler_not_called_after_dropping() {
+    let mut o = Observable::new(10);
+    let count = Rc::new(Cell::new(0));
+    let count_clone = count.clone();
+    let handler = InvalidationHandler::new(move || count_clone.set(count_clone.get() + 1));
+    o.on_invalidated(&handler);
+
+    o.set(20);
+    assert_that(&count.get()).is_equal_to(&1);
+
+    drop(handler);
+
+    o.set(30);
+    assert_that(&count.get()).is_equal_to(&1);
 }
 
 #[test]
