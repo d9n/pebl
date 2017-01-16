@@ -1,7 +1,7 @@
 use std::boxed::Box;
 use std::cell::Cell;
 use std::fmt;
-use std::ops::AddAssign;
+use std::ops::Add;
 use std::rc::Rc;
 
 use obsv::{InvalidationHandler, Observable, ObservableRef, ObservablePtr};
@@ -78,13 +78,9 @@ impl<I: PartialEq, O: PartialEq + fmt::Debug> fmt::Debug for Expression<I, O> {
     }
 }
 
-pub fn sum<T: PartialEq + Default + AddAssign + Copy>(targets: &[&ToObservablePtr<T>]) -> Expression<T, T> {
+pub fn sum<T: PartialEq + Default + Add<Output = T> + Copy>(targets: &[&ToObservablePtr<T>]) -> Expression<T, T> {
     Expression::<T, T>::new(targets, Box::new(|targets| {
-        let mut sum = Default::default();
-        for t in targets {
-            sum += *t.get();
-        }
-        sum
+        targets.iter().fold(Default::default(), |sum, val| sum + *val.get())
     }))
 }
 
