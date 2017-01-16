@@ -64,6 +64,28 @@ fn to_string_expr_works() {
 }
 
 #[test]
+fn and_expr_works() {
+    let mut p1 = Property::new(true);
+    let mut p2 = Property::new(true);
+    let a = expr::and(&[&p1, &p2]);
+
+    assert_that(a.get()).is_equal_to(&true);
+
+    p1.set(false);
+    assert_that(a.get()).is_equal_to(&false);
+
+    p2.set(false);
+    assert_that(a.get()).is_equal_to(&false);
+
+    p1.set(true);
+    assert_that(a.get()).is_equal_to(&false);
+
+    drop(p2);
+    assert_that(a.get()).is_equal_to(&true);
+}
+
+
+#[test]
 fn expression_implements_debug() {
     let p1 = Property::new(10);
     let p2 = Property::new(20);

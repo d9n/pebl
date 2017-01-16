@@ -91,6 +91,15 @@ pub fn sum<T: PartialEq + Default + Add<Output = T> + Copy>(targets: &[&ToObserv
     }))
 }
 
+pub fn and(targets: &[&ToObservablePtr<bool>]) -> Expression<bool, bool> {
+    Expression::<bool, bool>::new(targets, Box::new(|targets| {
+        if targets.len() == 0 {
+            return false;
+        }
+        targets.iter().fold(true, |result, val| result && *val.get())
+    }))
+}
+
 pub fn to_string<T: PartialEq + fmt::Display>(target: &ToObservablePtr<T>) -> Expression<T, String> {
     Expression::<T, String>::new_unary(target, Box::new(|opt| {
         match opt {
