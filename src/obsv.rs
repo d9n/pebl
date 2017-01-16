@@ -204,10 +204,6 @@ impl<T: PartialEq> ObservablePtr<T> {
         }
     }
 
-    fn can_deref(&self) -> bool {
-        if let Some(_) = self.valid_handle.upgrade() { true } else { false }
-    }
-
     pub fn try_deref<'a>(&'a self) -> Option<ObservableRef<'a, T>> {
         if self.can_deref() {
             return Some(ObservableRef::new(self));
@@ -230,6 +226,10 @@ impl<T: PartialEq> ObservablePtr<T> {
         self.try_deref_mut().unwrap()
     }
 
+    fn can_deref(&self) -> bool {
+        self.valid_handle.upgrade().is_some()
+    }
+
     // Undefined behavior if `can_deref` is not true
     unsafe fn deref_data(&self) -> &mut ObservableData<T> {
         &mut *((*self.cell_ptr).get())
@@ -249,7 +249,6 @@ impl<T: PartialEq> ObservablePtr<T> {
     unsafe fn add_invalidation_handler(&self, handler: &InvalidationHandler) {
         self.deref_data().on_invalidated.push(&handler.callback);
     }
-
 }
 
 impl<T: PartialEq> Clone for ObservablePtr<T> {
