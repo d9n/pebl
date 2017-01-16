@@ -76,12 +76,41 @@ fn value_can_be_observed_for_changes() {
     o.set(30);
     assert_that(&count.get()).is_equal_to(&2);
 
+    // Setting same value twice doesn't increment count
     o.set(30);
     assert_that(&count.get()).is_equal_to(&2);
 }
 
 #[test]
-fn invalidation_handler_not_called_after_it_is_dropped() {
+fn observable_fires_invalidation_event_on_modify_inner() {
+    let mut o_string = Observable::new(String::from("Hello"));
+    let mut o_vec = Observable::new(Vec::new());
+    let count = Rc::new(Cell::new(0));
+    let handler;
+    {
+        let count = count.clone();
+        handler = InvalidationHandler::new(move || count.set(count.get() + 1));
+    }
+    o_string.add_invalidation_handler(&handler);
+    o_vec.add_invalidation_handler(&handler);
+
+    assert_that(&count.get()).is_equal_to(&0);
+
+    *o_string.modify_inner() += ", World";
+    assert_that(&count.get()).is_equal_to(&1);
+    assert_that(o_string.get()).is_equal_to(String::from("Hello, World"));
+
+    o_vec.modify_inner().push(3);
+    assert_that(&count.get()).is_equal_to(&2);
+    assert_that(&o_vec.get().len()).is_equal_to(&1);
+
+    // Even if we don't actually modify_inner, the count goes up
+    o_string.modify_inner().len();
+    assert_that(&count.get()).is_equal_to(&3);
+}
+
+#[test]
+fn dropping_invalidation_handler_unregisters_it_from_observable() {
     let mut o = Observable::new(10);
     let count = Rc::new(Cell::new(0));
 
@@ -102,7 +131,7 @@ fn invalidation_handler_not_called_after_it_is_dropped() {
 }
 
 #[test]
-fn invalidation_handler_called_after_observable_is_dropped() {
+fn dropping_observable_triggers_invalidation_handlers_on_last_time() {
     let o = Observable::new(10);
     let count = Rc::new(Cell::new(0));
 

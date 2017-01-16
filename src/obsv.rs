@@ -1,4 +1,5 @@
 use std::cell::UnsafeCell;
+use std::ops::{Deref, DerefMut};
 use std::fmt;
 use std::rc::{Rc, Weak};
 use weak::*;
@@ -72,14 +73,18 @@ impl<T: PartialEq> ObservableData<T> {
         &self.value
     }
 
+    fn get_mut(&mut self) -> &mut T {
+        &mut self.value
+    }
+
     fn set(&mut self, value: T) {
         if self.value != value {
             self.value = value;
-            self.fire_callbacks();
+            self.fire_invalidated();
         }
     }
 
-    fn fire_callbacks(&mut self) {
+    fn fire_invalidated(&mut self) {
         for callback in &self.on_invalidated {
             callback();
         }
@@ -88,7 +93,7 @@ impl<T: PartialEq> ObservableData<T> {
 
 impl<T: PartialEq> Drop for ObservableData<T> {
     fn drop(&mut self) {
-        self.fire_callbacks();
+        self.fire_invalidated();
     }
 }
 
@@ -114,6 +119,11 @@ impl<T: PartialEq> Observable<T> {
 
     pub fn set(&mut self, value: T) {
         self.get_data().set(value);
+    }
+
+    #[must_use]
+    pub fn modify_inner(&mut self) -> ModifyInnerRef<T> {
+        ModifyInnerRef::new(self.get_data())
     }
 
     pub fn add_invalidation_handler(&self, handler: &InvalidationHandler) {
@@ -189,6 +199,10 @@ impl<'a, T: 'a + PartialEq> ObservableMutRef<'a, T> {
         unsafe { self.obsv_ptr.set(value); }
     }
 
+    pub fn modify_inner(&mut self) -> ModifyInnerRef<T> {
+        unsafe { self.obsv_ptr.modify_inner() }
+    }
+
     pub fn add_invalidation_handler(&self, handler: &InvalidationHandler) {
         // Safe to call during lifetime of ObservableMutRef
         unsafe { self.obsv_ptr.add_invalidation_handler(handler); }
@@ -199,6 +213,37 @@ impl<'a, T: 'a + PartialEq> Drop for ObservableMutRef<'a, T> {
     fn drop(&mut self) {
         // Safe to call during lifetime of ObservableMutRef
         unsafe { self.obsv_ptr.deref_data().borrow_counts.count_unborrow_mut(); }
+    }
+}
+
+pub struct ModifyInnerRef<'a, T: 'a + PartialEq> {
+    data: &'a mut ObservableData<T>,
+}
+
+impl<'a, T: 'a + PartialEq> ModifyInnerRef<'a, T> {
+    fn new(data: &'a mut ObservableData<T>) -> Self {
+        data.borrow_counts.count_borrow_mut(); // Uncounted on drop
+        ModifyInnerRef { data: data }
+    }
+}
+
+impl<'a, T: 'a + PartialEq> Deref for ModifyInnerRef<'a, T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        self.data.get()
+    }
+}
+
+impl<'a, T: 'a + PartialEq> DerefMut for ModifyInnerRef<'a, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.data.get_mut()
+    }
+}
+
+impl<'a, T: 'a + PartialEq> Drop for ModifyInnerRef<'a, T> {
+    fn drop(&mut self) {
+        self.data.borrow_counts.count_unborrow_mut();
+        self.data.fire_invalidated();
     }
 }
 
@@ -254,6 +299,10 @@ impl<T: PartialEq> ObservablePtr<T> {
     // Undefined behavior if `can_deref` is not true
     unsafe fn set(&mut self, value: T) {
         self.deref_data().set(value);
+    }
+    // Undefined behavior if `can_deref` is not true
+    unsafe fn modify_inner(&mut self) -> ModifyInnerRef<T> {
+        ModifyInnerRef::new(self.deref_data())
     }
 
     // Undefined behavior if `can_deref` is not true
