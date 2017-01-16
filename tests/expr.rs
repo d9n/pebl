@@ -17,6 +17,7 @@ fn sum_expr_works_with_int() {
     p2.set(100);
     assert_that(s.get()).is_equal_to(&140);
 }
+
 #[test]
 fn sum_expr_works_with_float() {
     let p1 = Property::new(10.0);
@@ -57,6 +58,9 @@ fn to_string_expr_works() {
 
     p.set(-123);
     assert_that(s.get()).is_equal_to(String::from("-123"));
+
+    drop(p);
+    assert_that(s.get()).is_equal_to(String::from(""));
 }
 
 #[test]

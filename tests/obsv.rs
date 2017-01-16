@@ -81,7 +81,7 @@ fn value_can_be_observed_for_changes() {
 }
 
 #[test]
-fn invalidation_handler_not_called_after_dropping() {
+fn invalidation_handler_not_called_after_it_is_dropped() {
     let mut o = Observable::new(10);
     let count = Rc::new(Cell::new(0));
 
@@ -101,6 +101,23 @@ fn invalidation_handler_not_called_after_dropping() {
     assert_that(&count.get()).is_equal_to(&1);
 }
 
+#[test]
+fn invalidation_handler_called_after_observable_is_dropped() {
+    let o = Observable::new(10);
+    let count = Rc::new(Cell::new(0));
+
+    let handler;
+    {
+        let count = count.clone();
+        handler = InvalidationHandler::new(move || count.set(count.get() + 1));
+    }
+    o.add_invalidation_handler(&handler);
+
+    assert_that(&count.get()).is_equal_to(&0);
+
+    drop(o);
+    assert_that(&count.get()).is_equal_to(&1);
+}
 #[test]
 fn value_classes_implement_debug() {
     let p = Observable::new(42);

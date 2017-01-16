@@ -9,8 +9,9 @@ use property::ToObservablePtr;
 
 
 type ExprMethod<I, O> = Fn(&Vec<ObservableRef<I>>) -> O;
+type UnaryExprMethod<I, O> = Fn(Option<&ObservableRef<I>>) -> O;
 
-pub struct Expression<I: PartialEq, O: PartialEq> {
+pub struct Expression<I: 'static + PartialEq, O: 'static + PartialEq> {
     value: Observable<O>,
     targets: Vec<ObservablePtr<I>>,
     resolve: Box<ExprMethod<I, O>>,
@@ -42,6 +43,12 @@ impl<I: PartialEq, O: PartialEq> Expression<I, O> {
             dirty: dirty,
             invalidation_handler: handler,
         }
+    }
+
+    pub fn new_unary(target: &ToObservablePtr<I>, resolve: Box<UnaryExprMethod<I, O>>) -> Self {
+        Expression::new(&[target], Box::new(move |targets| {
+            if targets.len() > 0 { resolve(Option::from(&targets[0])) } else { resolve(None) }
+        }))
     }
 
     pub fn get(&self) -> &O {
@@ -85,8 +92,10 @@ pub fn sum<T: PartialEq + Default + Add<Output = T> + Copy>(targets: &[&ToObserv
 }
 
 pub fn to_string<T: PartialEq + fmt::Display>(target: &ToObservablePtr<T>) -> Expression<T, String> {
-    // TODO: new_unary
-    Expression::<T, String>::new(&[target], Box::new(|targets| {
-        return String::from(format!("{0}", *targets[0].get()));
+    Expression::<T, String>::new_unary(target, Box::new(|opt| {
+        match opt {
+            Some(value) => String::from(format!("{0}", value.get())),
+            None => String::from(""),
+        }
     }))
 }

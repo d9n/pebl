@@ -75,12 +75,23 @@ impl<T: PartialEq> ObservableData<T> {
     fn set(&mut self, value: T) {
         if self.value != value {
             self.value = value;
-            for callback in &self.on_invalidated {
-                callback();
-            }
+            self.fire_callbacks();
+        }
+    }
+
+    fn fire_callbacks(&mut self) {
+        for callback in &self.on_invalidated {
+            callback();
         }
     }
 }
+
+impl<T: PartialEq> Drop for ObservableData<T> {
+    fn drop(&mut self) {
+        self.fire_callbacks();
+    }
+}
+
 
 pub struct Observable<T: PartialEq> {
     cell: UnsafeCell<ObservableData<T>>,
