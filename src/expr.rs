@@ -1,10 +1,12 @@
-use obsv::{InvalidationHandler, Observable, ObservableRef, ObservablePtr};
-
 use std::boxed::Box;
 use std::cell::Cell;
 use std::fmt;
 use std::ops::AddAssign;
 use std::rc::Rc;
+
+use obsv::{InvalidationHandler, Observable, ObservableRef, ObservablePtr};
+use property::ToObservablePtr;
+
 
 type ExprMethod<I, O> = Fn(&Vec<ObservableRef<I>>) -> O;
 
@@ -18,7 +20,7 @@ pub struct Expression<I: PartialEq, O: PartialEq> {
 }
 
 impl<I: PartialEq, O: PartialEq> Expression<I, O> {
-    pub fn new(targets: &[&AsRef<Observable<I>>], resolve: Box<ExprMethod<I, O>>) -> Self {
+    pub fn new(targets: &[&ToObservablePtr<I>], resolve: Box<ExprMethod<I, O>>) -> Self {
         let dirty = Rc::new(Cell::new(false));
         let handler;
         {
@@ -28,8 +30,9 @@ impl<I: PartialEq, O: PartialEq> Expression<I, O> {
 
         let mut target_ptrs: Vec<ObservablePtr<I>> = Vec::with_capacity(targets.len());
         for t in targets {
-            target_ptrs.push(ObservablePtr::new(t.as_ref()));
-            t.as_ref().add_invalidation_handler(&handler);
+            let ptr = t.to_obsv_ptr();
+            ptr.deref().add_invalidation_handler(&handler);
+            target_ptrs.push(ptr);
         }
 
         Expression {
@@ -45,6 +48,7 @@ impl<I: PartialEq, O: PartialEq> Expression<I, O> {
         if self.dirty.get() {
             let mut value_ptr = ObservablePtr::new(&self.value);
             value_ptr.deref_mut().set(Expression::run(&self.targets, &self.resolve));
+            self.dirty.set(false);
         }
 
         self.value.get()
@@ -62,9 +66,9 @@ impl<I: PartialEq, O: PartialEq> Expression<I, O> {
     }
 }
 
-impl<I: PartialEq, O: PartialEq> AsRef<Observable<O>> for Expression<I, O> {
-    fn as_ref(&self) -> &Observable<O> {
-        &self.value
+impl<I: PartialEq, O: PartialEq> ToObservablePtr<O> for Expression<I, O> {
+    fn to_obsv_ptr(&self) -> ObservablePtr<O> {
+        ObservablePtr::new(&self.value)
     }
 }
 
@@ -74,7 +78,7 @@ impl<I: PartialEq, O: PartialEq + fmt::Debug> fmt::Debug for Expression<I, O> {
     }
 }
 
-pub fn sum<T: PartialEq + Default + AddAssign + Copy>(targets: &[&AsRef<Observable<T>>]) -> Expression<T, T> {
+pub fn sum<T: PartialEq + Default + AddAssign + Copy>(targets: &[&ToObservablePtr<T>]) -> Expression<T, T> {
     Expression::<T, T>::new(targets, Box::new(|targets| {
         let mut sum = Default::default();
         for t in targets {
@@ -84,8 +88,9 @@ pub fn sum<T: PartialEq + Default + AddAssign + Copy>(targets: &[&AsRef<Observab
     }))
 }
 
-pub fn to_string<T: PartialEq + fmt::Display>(target: &AsRef<Observable<T>>) -> Expression<T, String> {
+pub fn to_string<T: PartialEq + fmt::Display>(target: &ToObservablePtr<T>) -> Expression<T, String> {
+    // TODO: new_unary
     Expression::<T, String>::new(&[target], Box::new(|targets| {
-        String::from(format!("{0}", targets[0].get()))
+        return String::from(format!("{0}", *targets[0].get()));
     }))
 }

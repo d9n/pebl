@@ -1,6 +1,9 @@
 use std::fmt;
-use obsv::Observable;
+use obsv::{Observable, ObservablePtr};
 
+pub trait ToObservablePtr<T: PartialEq> {
+    fn to_obsv_ptr(&self) -> ObservablePtr<T>;
+}
 
 pub struct Property<T: PartialEq> {
     value: Observable<T>,
@@ -32,9 +35,9 @@ impl<T: PartialEq + Default> Property<T> {
     }
 }
 
-impl<T: PartialEq> AsRef<Observable<T>> for Property<T> {
-    fn as_ref(&self) -> &Observable<T> {
-        &self.value
+impl<T: PartialEq> ToObservablePtr<T> for Property<T> {
+    fn to_obsv_ptr(&self) -> ObservablePtr<T> {
+        ObservablePtr::new(&self.value)
     }
 }
 

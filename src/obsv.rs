@@ -133,47 +133,63 @@ pub struct ObservableRef<'a, T: 'a + PartialEq> {
 impl<'a, T: 'a + PartialEq> ObservableRef<'a, T> {
     // Only call this if you know that `data_ptr` can safely be dereferenced
     fn new(obsv_ptr: &'a ObservablePtr<T>) -> Self {
-        obsv_ptr.deref_data().borrow_counts.count_borrow();
+        // Safe to call during lifetime of ObservableRef
+        unsafe { obsv_ptr.deref_data().borrow_counts.count_borrow(); } // Uncounted on Drop
         ObservableRef { obsv_ptr: obsv_ptr }
     }
 
     pub fn get(&self) -> &T {
-        self.obsv_ptr.deref_data().get()
+        // Safe to call during lifetime of ObservableRef
+        unsafe { self.obsv_ptr.get() }
+    }
+
+    pub fn add_invalidation_handler(&self, handler: &InvalidationHandler) {
+        // Safe to call during lifetime of ObservableRef
+        unsafe { self.obsv_ptr.add_invalidation_handler(handler); }
     }
 }
 
 impl<'a, T: 'a + PartialEq> Drop for ObservableRef<'a, T> {
     fn drop(&mut self) {
-        self.obsv_ptr.deref_data().borrow_counts.count_unborrow();
+        // Safe to call during lifetime of ObservableRef
+        unsafe { self.obsv_ptr.deref_data().borrow_counts.count_unborrow(); }
     }
 }
 
 pub struct ObservableMutRef<'a, T: 'a + PartialEq> {
-    obsv_ptr: &'a ObservablePtr<T>,
+    obsv_ptr: &'a mut ObservablePtr<T>,
 }
 
 impl<'a, T: 'a + PartialEq> ObservableMutRef<'a, T> {
     // Only call this if you know that `data_ptr` can safely be dereferenced
-    fn new(obsv_ptr: &'a ObservablePtr<T>) -> Self {
-        obsv_ptr.deref_data().borrow_counts.count_borrow_mut(); // Uncounted on Drop
+    fn new(obsv_ptr: &'a mut ObservablePtr<T>) -> Self {
+        // Safe to call during lifetime of ObservableRef
+        unsafe { obsv_ptr.deref_data().borrow_counts.count_borrow_mut(); } // Uncounted on Drop
         ObservableMutRef { obsv_ptr: obsv_ptr }
     }
 
     pub fn get(&self) -> &T {
-        &self.obsv_ptr.deref_data().get()
+        // Safe to call during lifetime of ObservableMutRef
+        unsafe { self.obsv_ptr.get() }
     }
 
     pub fn set(&mut self, value: T) {
-        self.obsv_ptr.deref_data().set(value);
+        // Safe to call during lifetime of ObservableMutRef
+        unsafe { self.obsv_ptr.set(value); }
+    }
+
+    pub fn add_invalidation_handler(&self, handler: &InvalidationHandler) {
+        // Safe to call during lifetime of ObservableMutRef
+        unsafe { self.obsv_ptr.add_invalidation_handler(handler); }
     }
 }
 
 impl<'a, T: 'a + PartialEq> Drop for ObservableMutRef<'a, T> {
     fn drop(&mut self) {
-        self.obsv_ptr.deref_data().borrow_counts.count_unborrow_mut();
+        // Safe to call during lifetime of ObservableMutRef
+        unsafe { self.obsv_ptr.deref_data().borrow_counts.count_unborrow_mut(); }
     }
 }
-
 
 pub struct ObservablePtr<T: PartialEq> {
     cell_ptr: *const UnsafeCell<ObservableData<T>>,
@@ -215,9 +231,25 @@ impl<T: PartialEq> ObservablePtr<T> {
     }
 
     // Undefined behavior if `can_deref` is not true
-    fn deref_data(&self) -> &mut ObservableData<T> {
-        unsafe { &mut *((*self.cell_ptr).get()) }
+    unsafe fn deref_data(&self) -> &mut ObservableData<T> {
+        &mut *((*self.cell_ptr).get())
     }
+
+    // Undefined behavior if `can_deref` is not true
+    unsafe fn get(&self) -> &T {
+        &self.deref_data().get()
+    }
+
+    // Undefined behavior if `can_deref` is not true
+    unsafe fn set(&mut self, value: T) {
+        self.deref_data().set(value);
+    }
+
+    // Undefined behavior if `can_deref` is not true
+    unsafe fn add_invalidation_handler(&self, handler: &InvalidationHandler) {
+        self.deref_data().on_invalidated.push(&handler.callback);
+    }
+
 }
 
 impl<T: PartialEq> Clone for ObservablePtr<T> {
