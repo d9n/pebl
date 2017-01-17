@@ -1,12 +1,14 @@
+pub mod logic;
+pub mod math;
+pub mod text;
+
 use std::boxed::Box;
 use std::cell::Cell;
 use std::fmt;
-use std::ops::Add;
 use std::rc::Rc;
 
 use obsv::{InvalidationHandler, Observable, ObservableRef, ObservablePtr};
 use property::ToObservablePtr;
-
 
 type ExprMethod<I, O> = Fn(&Vec<ObservableRef<I>>) -> O;
 type UnaryExprMethod<I, O> = Fn(Option<&ObservableRef<I>>) -> O;
@@ -83,28 +85,4 @@ impl<I: PartialEq, O: PartialEq + fmt::Debug> fmt::Debug for Expression<I, O> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Expression {{ {:?} }}", self.value.get())
     }
-}
-
-pub fn sum<T: PartialEq + Default + Add<Output = T> + Copy>(targets: &[&ToObservablePtr<T>]) -> Expression<T, T> {
-    Expression::<T, T>::new(targets, Box::new(|targets| {
-        targets.iter().fold(Default::default(), |sum, val| sum + *val.get())
-    }))
-}
-
-pub fn and(targets: &[&ToObservablePtr<bool>]) -> Expression<bool, bool> {
-    Expression::<bool, bool>::new(targets, Box::new(|targets| {
-        if targets.len() == 0 {
-            return false;
-        }
-        targets.iter().fold(true, |result, val| result && *val.get())
-    }))
-}
-
-pub fn to_string<T: PartialEq + fmt::Display>(target: &ToObservablePtr<T>) -> Expression<T, String> {
-    Expression::<T, String>::new_unary(target, Box::new(|opt| {
-        match opt {
-            Some(value) => String::from(format!("{0}", value.get())),
-            None => String::from(""),
-        }
-    }))
 }
