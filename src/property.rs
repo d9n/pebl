@@ -2,11 +2,11 @@ use std::fmt;
 use obsv::{InvalidationHandler, Observable, ObservablePtr};
 use expr::{Expression, IntoExpression};
 
-pub struct Property<T: PartialEq + Clone> {
+pub struct Property<T: PartialEq> {
     value: Observable<T>,
 }
 
-impl<T: 'static + PartialEq + Clone> Property<T> {
+impl<T: 'static + PartialEq> Property<T> {
     pub fn new(value: T) -> Property<T> {
         Property { value: Observable::new(value) }
     }
