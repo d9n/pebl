@@ -1,6 +1,6 @@
 use std::fmt;
 use obsv::{InvalidationHandler, Observable, ObservablePtr};
-use expr::{Expression, IntoExpression};
+use expr::{CoreExpressions, Expression, IntoExpression};
 
 pub struct Property<T: PartialEq> {
     value: Observable<T>,
@@ -66,6 +66,8 @@ impl<'a, T: 'static + PartialEq + Clone> IntoExpression<T> for &'a Property<T> {
         Box::new(PassthruExpression::new(&self.value))
     }
 }
+
+impl<'a, T: 'static + PartialEq + Clone> CoreExpressions<T> for &'a Property<T> {}
 
 impl<T: 'static + fmt::Debug + Clone + PartialEq> fmt::Debug for Property<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

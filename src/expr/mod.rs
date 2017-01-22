@@ -2,6 +2,11 @@ pub mod logic;
 pub mod math;
 pub mod text;
 
+// For CoreExpressions
+use std::marker::Sized;
+use std::ops::Add;
+use std::fmt;
+
 use obsv::InvalidationHandler;
 
 pub trait IntoExpression<T: PartialEq + Clone> {
@@ -14,6 +19,26 @@ pub trait Expression<T: PartialEq + Clone>: IntoExpression<T> {
         self.try_get().unwrap()
     }
     fn add_invalidation_handler(&self, handler: &InvalidationHandler);
+}
+
+pub trait CoreExpressions<T: PartialEq + Clone>: IntoExpression<T> where Self: Sized {
+
+    fn and<E: IntoExpression<bool>>(self, rhs: E) -> BinaryExpression<bool, bool, bool>
+    where Self: IntoExpression<bool> {
+        logic::and(self, rhs)
+    }
+
+
+    fn plus<E: IntoExpression<T>>(self, rhs: E) -> BinaryExpression<T, T, T>
+        where T: Copy + Add<Output = T> {
+        math::plus(self, rhs)
+    }
+
+
+    fn to_string(self) -> UnaryExpression<T, String>
+    where T: fmt::Display {
+        text::to_string(self)
+    }
 }
 
 pub fn unary<I, O, E, F>(src: E, f: F) -> UnaryExpression<I, O>
@@ -46,13 +71,15 @@ impl<I: 'static + PartialEq + Clone, O: 'static + PartialEq + Clone> IntoExpress
 
 impl<I: 'static + PartialEq + Clone, O: 'static + PartialEq + Clone> Expression<O> for UnaryExpression<I, O> {
     fn try_get(&self) -> Option<O> {
-       self.src.try_get().map(|val| (self.f)(&val))
+        self.src.try_get().map(|val| (self.f)(&val))
     }
 
     fn add_invalidation_handler(&self, handler: &InvalidationHandler) {
         self.src.add_invalidation_handler(handler);
     }
 }
+
+impl<I: 'static + PartialEq + Clone, O: 'static + PartialEq + Clone> CoreExpressions<O> for UnaryExpression<I, O> {}
 
 pub struct BinaryExpression<I1: 'static + PartialEq + Clone, I2: 'static + PartialEq + Clone, O: 'static + PartialEq + Clone> {
     lhs: Box<Expression<I1>>,
@@ -78,3 +105,5 @@ impl<I1: 'static + PartialEq + Clone, I2: 'static + PartialEq + Clone, O: 'stati
         self.rhs.add_invalidation_handler(handler);
     }
 }
+
+impl<I1: 'static + PartialEq + Clone, I2: 'static + PartialEq + Clone, O: 'static + PartialEq + Clone> CoreExpressions<O> for BinaryExpression<I1, I2, O> {}

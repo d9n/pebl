@@ -27,6 +27,24 @@ fn expressions_are_nestable() {
     assert_that(&sum.get()).is_equal_to(&333);
 }
 
+#[test]
+fn core_expressions_available_for_expressions_and_properties() {
+    let p1 = Property::new(1);
+    let p2 = Property::new(10);
+    let p3 = Property::new(100);
+
+    let sum = p1.plus(&p2);
+    let sum2 = sum.plus(&p3);
+    assert_that(&sum2.get()).is_equal_to(&111);
+
+    assert_that(&p3.to_string().get()).is_equal_to(String::from("100"));
+
+    let b1 = Property::new(true);
+    let b2 = Property::new(false);
+
+    assert_that(&b1.and(&b2).get()).is_equal_to(&false);
+}
+
 mod logic {
     use spectral::prelude::*;
     use pebl::prelude::*;
@@ -90,7 +108,7 @@ mod text {
     fn to_string_expr_works() {
         let mut p = Property::new(10);
 
-        let s = expr::text::to_str(&p);
+        let s = expr::text::to_string(&p);
         assert_that(&s.get()).is_equal_to(String::from("10"));
 
         p.set(-123);
