@@ -63,3 +63,45 @@ fn property_class_implements_debug() {
     let p_string = format!("{:?}", p);
     assert_that(&p_string.as_str()).is_equal_to(&"Property { 42 }");
 }
+
+#[test]
+fn property_can_bind_to_other_property() {
+    let mut p_src = Property::new(42);
+    let mut p_dest = Property::default();
+
+    assert_that(&p_dest.is_bound()).is_false();
+    p_dest.bind(&p_src);
+    assert_that(&p_dest.is_bound()).is_true();
+    assert_that(p_dest.get()).is_equal_to(&42);
+
+    p_src.set(9000);
+    assert_that(p_dest.get()).is_equal_to(&9000);
+
+    assert_that(&p_dest.is_bound()).is_true();
+    p_dest.unbind();
+    assert_that(&p_dest.is_bound()).is_false();
+    p_src.set(123);
+    assert_that(p_dest.get()).is_equal_to(&9000);
+}
+
+#[test]
+fn property_can_bind_to_expression() {
+    let mut p1 = Property::new(100);
+    let mut p2 = Property::new(10);
+    let mut p3 = Property::new(1);
+    let sum = p1.plus(&p2).plus(&p3);
+
+    let mut p_dest = Property::default();
+
+    p_dest.bind(sum);
+    assert_that(p_dest.get()).is_equal_to(&111);
+
+    p1.set(0);
+    assert_that(p_dest.get()).is_equal_to(&11);
+
+    p3.set(0);
+    assert_that(p_dest.get()).is_equal_to(&10);
+
+    p2.set(0);
+    assert_that(p_dest.get()).is_equal_to(&0);
+}

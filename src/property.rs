@@ -1,22 +1,61 @@
+use std::cell::Cell;
 use std::fmt;
+use std::rc::Rc;
 use obsv::{InvalidationHandler, Observable, ObservablePtr};
 use expr::{CoreExpressions, Expression, IntoExpression};
 
-pub struct Property<T: PartialEq> {
-    value: Observable<T>,
+struct Binding<T: PartialEq + Clone> {
+    pub expr: Box<Expression<T>>,
+    #[allow(dead_code)] // Needed to keep weak ref alive
+    handle: InvalidationHandler,
+    dirty: Rc<Cell<bool>>,
 }
 
-impl<T: 'static + PartialEq> Property<T> {
+pub struct Property<T: PartialEq + Clone> {
+    value: Observable<T>,
+    bound_to: Option<Binding<T>>,
+}
+
+impl<T: 'static + PartialEq + Clone> Property<T> {
     pub fn new(value: T) -> Property<T> {
-        Property { value: Observable::new(value) }
+        Property { value: Observable::new(value), bound_to: None }
     }
 
     pub fn get(&self) -> &T {
+        if let Some(ref binding) = self.bound_to {
+            if binding.dirty.get() {
+                let mut value_ptr = ObservablePtr::new(&self.value);
+                value_ptr.deref_mut().set(binding.expr.get());
+                binding.dirty.set(false);
+            }
+        }
         self.value.get()
     }
 
     pub fn set(&mut self, value: T) {
         self.value.set(value)
+    }
+
+    pub fn bind<E: IntoExpression<T>>(&mut self, target: E)
+        where T: Clone {
+        let dirty = Rc::new(Cell::new(true));
+        let dirty_clone = dirty.clone();
+        let handle = InvalidationHandler::new(move || dirty_clone.set(true));
+        let binding = Binding {
+            expr: target.into_expr(),
+            handle: handle,
+            dirty: dirty,
+        };
+        binding.expr.add_invalidation_handler(&binding.handle);
+        self.bound_to = Some(binding);
+    }
+
+    pub fn unbind(&mut self) {
+        self.bound_to = None;
+    }
+
+    pub fn is_bound(&self) -> bool {
+        self.bound_to.is_some()
     }
 }
 
