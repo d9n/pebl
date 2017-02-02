@@ -4,7 +4,8 @@ pub mod text;
 
 // For CoreExpressions
 use std::marker::Sized;
-use std::ops::Add;
+use std::ops::{Add, Mul, Neg};
+use std::cmp::PartialOrd;
 use std::fmt;
 
 use obsv::InvalidationHandler;
@@ -22,21 +23,120 @@ pub trait Expression<T: PartialEq + Clone>: IntoExpression<T> {
 }
 
 pub trait CoreExpressions<T: PartialEq + Clone>: IntoExpression<T> where Self: Sized {
+    // logic
 
     fn and<E: IntoExpression<bool>>(self, rhs: E) -> BinaryExpression<bool, bool, bool>
-    where Self: IntoExpression<bool> {
+        where Self: IntoExpression<bool> {
         logic::and(self, rhs)
     }
 
+    fn not(self) -> UnaryExpression<bool, bool>
+        where Self: IntoExpression<bool> {
+        logic::not(self)
+    }
+
+    fn or<E: IntoExpression<bool>>(self, rhs: E) -> BinaryExpression<bool, bool, bool>
+        where Self: IntoExpression<bool> {
+        logic::or(self, rhs)
+    }
+
+
+    // math
+
+    fn abs(self) -> UnaryExpression<T, T>
+        where T: Copy + PartialOrd + Default + Neg<Output=T>, Self: IntoExpression<T> {
+        math::abs(self)
+    }
+
+    fn neg(self) -> UnaryExpression<T, T>
+        where T: Copy + Neg<Output=T>, Self: IntoExpression<T> {
+        math::neg(self)
+    }
 
     fn plus<E: IntoExpression<T>>(self, rhs: E) -> BinaryExpression<T, T, T>
         where T: Copy + Add<Output = T> {
         math::plus(self, rhs)
     }
 
+    fn times<E: IntoExpression<T>>(self, rhs: E) -> BinaryExpression<T, T, T>
+        where T: Copy + Mul<Output = T> {
+        math::times(self, rhs)
+    }
+
+    fn eq<E: IntoExpression<T>>(self, rhs: E) -> BinaryExpression<T, T, bool>
+        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+        math::eq(self, rhs)
+    }
+
+    fn eq_val(self, val: T) -> UnaryExpression<T, bool>
+        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+        math::eq_val(self, val)
+    }
+
+    fn ne<E: IntoExpression<T>>(self, rhs: E) -> BinaryExpression<T, T, bool>
+        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+        math::ne(self, rhs)
+    }
+
+    fn ne_val(self, val: T) -> UnaryExpression<T, bool>
+        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+        math::ne_val(self, val)
+    }
+
+    fn gt<E: IntoExpression<T>>(self, rhs: E) -> BinaryExpression<T, T, bool>
+        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+        math::gt(self, rhs)
+    }
+
+    fn gt_val(self, val: T) -> UnaryExpression<T, bool>
+        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+        math::gt_val(self, val)
+    }
+
+    fn lt<E: IntoExpression<T>>(self, rhs: E) -> BinaryExpression<T, T, bool>
+        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+        math::lt(self, rhs)
+    }
+
+    fn lt_val(self, val: T) -> UnaryExpression<T, bool>
+        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+        math::lt_val(self, val)
+    }
+
+    fn gte<E: IntoExpression<T>>(self, rhs: E) -> BinaryExpression<T, T, bool>
+        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+        math::gte(self, rhs)
+    }
+
+    fn gte_val(self, val: T) -> UnaryExpression<T, bool>
+        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+        math::gte_val(self, val)
+    }
+
+    fn lte<E: IntoExpression<T>>(self, rhs: E) -> BinaryExpression<T, T, bool>
+        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+        math::lte(self, rhs)
+    }
+
+    fn lte_val(self, val: T) -> UnaryExpression<T, bool>
+        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+        math::lte_val(self, val)
+    }
+
+    // text
+
+    fn len(self) -> UnaryExpression<String, usize>
+        where Self: IntoExpression<String> {
+        text::len(self)
+    }
+
+    fn is_empty(self) -> UnaryExpression<String, bool>
+        where Self: IntoExpression<String> {
+        text::is_empty(self)
+    }
 
     fn to_string(self) -> UnaryExpression<T, String>
-    where T: fmt::Display {
+        where T: fmt::Display {
         text::to_string(self)
     }
 }
