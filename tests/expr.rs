@@ -200,6 +200,12 @@ mod math {
         p1.set(0);
         assert_that(&e.get()).is_equal_to(&0);
     }
+}
+
+mod cmp {
+    use spectral::prelude::*;
+    use pebl::prelude::*;
+
 
     #[test]
     fn eq_expr_works()
@@ -207,7 +213,7 @@ mod math {
         let mut p1 = Property::new(1);
         let mut p2 = Property::new(1);
 
-        let e = expr::math::eq(&p1, &p2);
+        let e = expr::cmp::eq(&p1, &p2);
 
         assert_that(&e.get()).is_true();
 
@@ -225,7 +231,7 @@ mod math {
     fn eq_val_expr_works()
     {
         let mut p = Property::new(1);
-        let e = expr::math::eq_val(&p, 2);
+        let e = expr::cmp::eq_val(&p, 2);
 
         assert_that(&e.get()).is_false();
 
@@ -242,7 +248,7 @@ mod math {
         let mut p1 = Property::new(1);
         let mut p2 = Property::new(1);
 
-        let e = expr::math::ne(&p1, &p2);
+        let e = expr::cmp::ne(&p1, &p2);
 
         assert_that(&e.get()).is_false();
 
@@ -260,7 +266,7 @@ mod math {
     fn ne_val_expr_works()
     {
         let mut p = Property::new(1);
-        let e = expr::math::ne_val(&p, 2);
+        let e = expr::cmp::ne_val(&p, 2);
 
         assert_that(&e.get()).is_true();
 
@@ -277,7 +283,7 @@ mod math {
         let mut p1 = Property::new(1);
         let mut p2 = Property::new(1);
 
-        let e = expr::math::gt(&p1, &p2);
+        let e = expr::cmp::gt(&p1, &p2);
 
         assert_that(&e.get()).is_false();
 
@@ -295,7 +301,7 @@ mod math {
     fn gt_val_expr_works()
     {
         let mut p = Property::new(1);
-        let e = expr::math::gt_val(&p, 2);
+        let e = expr::cmp::gt_val(&p, 2);
 
         assert_that(&e.get()).is_false();
 
@@ -312,7 +318,7 @@ mod math {
         let mut p1 = Property::new(1);
         let mut p2 = Property::new(1);
 
-        let e = expr::math::lt(&p1, &p2);
+        let e = expr::cmp::lt(&p1, &p2);
 
         assert_that(&e.get()).is_false();
 
@@ -330,7 +336,7 @@ mod math {
     fn lt_val_expr_works()
     {
         let mut p = Property::new(1);
-        let e = expr::math::lt_val(&p, 2);
+        let e = expr::cmp::lt_val(&p, 2);
 
         assert_that(&e.get()).is_true();
 
@@ -347,7 +353,7 @@ mod math {
         let mut p1 = Property::new(1);
         let mut p2 = Property::new(1);
 
-        let e = expr::math::gte(&p1, &p2);
+        let e = expr::cmp::gte(&p1, &p2);
 
         assert_that(&e.get()).is_true();
 
@@ -365,7 +371,7 @@ mod math {
     fn gte_val_expr_works()
     {
         let mut p = Property::new(1);
-        let e = expr::math::gte_val(&p, 2);
+        let e = expr::cmp::gte_val(&p, 2);
 
         assert_that(&e.get()).is_false();
 
@@ -382,7 +388,7 @@ mod math {
         let mut p1 = Property::new(1);
         let mut p2 = Property::new(1);
 
-        let e = expr::math::lte(&p1, &p2);
+        let e = expr::cmp::lte(&p1, &p2);
 
         assert_that(&e.get()).is_true();
 
@@ -400,7 +406,7 @@ mod math {
     fn lte_val_expr_works()
     {
         let mut p = Property::new(1);
-        let e = expr::math::lte_val(&p, 2);
+        let e = expr::cmp::lte_val(&p, 2);
 
         assert_that(&e.get()).is_true();
 

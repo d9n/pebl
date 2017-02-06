@@ -1,3 +1,4 @@
+pub mod cmp;
 pub mod logic;
 pub mod math;
 pub mod text;
@@ -63,64 +64,66 @@ pub trait CoreExpressions<T: PartialEq + Clone>: IntoExpression<T> where Self: S
         math::times(self, rhs)
     }
 
+    // cmp
+
     fn eq<E: IntoExpression<T>>(self, rhs: E) -> BinaryExpression<T, T, bool>
         where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
-        math::eq(self, rhs)
+        cmp::eq(self, rhs)
     }
 
     fn eq_val(self, val: T) -> UnaryExpression<T, bool>
         where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
-        math::eq_val(self, val)
+        cmp::eq_val(self, val)
     }
 
     fn ne<E: IntoExpression<T>>(self, rhs: E) -> BinaryExpression<T, T, bool>
         where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
-        math::ne(self, rhs)
+        cmp::ne(self, rhs)
     }
 
     fn ne_val(self, val: T) -> UnaryExpression<T, bool>
         where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
-        math::ne_val(self, val)
+        cmp::ne_val(self, val)
     }
 
     fn gt<E: IntoExpression<T>>(self, rhs: E) -> BinaryExpression<T, T, bool>
         where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
-        math::gt(self, rhs)
+        cmp::gt(self, rhs)
     }
 
     fn gt_val(self, val: T) -> UnaryExpression<T, bool>
         where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
-        math::gt_val(self, val)
+        cmp::gt_val(self, val)
     }
 
     fn lt<E: IntoExpression<T>>(self, rhs: E) -> BinaryExpression<T, T, bool>
         where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
-        math::lt(self, rhs)
+        cmp::lt(self, rhs)
     }
 
     fn lt_val(self, val: T) -> UnaryExpression<T, bool>
         where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
-        math::lt_val(self, val)
+        cmp::lt_val(self, val)
     }
 
     fn gte<E: IntoExpression<T>>(self, rhs: E) -> BinaryExpression<T, T, bool>
         where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
-        math::gte(self, rhs)
+        cmp::gte(self, rhs)
     }
 
     fn gte_val(self, val: T) -> UnaryExpression<T, bool>
         where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
-        math::gte_val(self, val)
+        cmp::gte_val(self, val)
     }
 
     fn lte<E: IntoExpression<T>>(self, rhs: E) -> BinaryExpression<T, T, bool>
         where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
-        math::lte(self, rhs)
+        cmp::lte(self, rhs)
     }
 
     fn lte_val(self, val: T) -> UnaryExpression<T, bool>
         where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
-        math::lte_val(self, val)
+        cmp::lte_val(self, val)
     }
 
     // text
