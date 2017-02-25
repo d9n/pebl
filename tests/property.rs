@@ -39,6 +39,14 @@ fn property_simple_set() {
 }
 
 #[test]
+fn property_modify_inner() {
+    let mut p = Property::new(String::from("Hello"));
+    p.modify_inner().push_str(", World");
+
+    assert_that(p.get()).is_equal_to(String::from("Hello, World"));
+}
+
+#[test]
 fn property_clear() {
     let mut p = Property::new(10);
     p.clear();

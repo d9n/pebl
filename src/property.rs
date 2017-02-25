@@ -1,7 +1,7 @@
 use std::cell::Cell;
 use std::fmt;
 use std::rc::Rc;
-use obsv::{InvalidationHandler, Observable, ObservablePtr};
+use obsv::{InvalidationHandler, ModifyInnerRef, Observable, ObservablePtr};
 use expr::{CoreExpressions, Expression, IntoExpression};
 
 struct Binding<T: PartialEq + Clone> {
@@ -36,8 +36,11 @@ impl<T: 'static + PartialEq + Clone> Property<T> {
         self.value.set(value)
     }
 
-    pub fn bind<E: IntoExpression<T>>(&mut self, target: E)
-        where T: Clone {
+    pub fn modify_inner(&mut self) -> ModifyInnerRef<T> {
+        self.value.modify_inner()
+    }
+
+    pub fn bind<E: IntoExpression<T>>(&mut self, target: E) {
         let dirty = Rc::new(Cell::new(true));
         let dirty_clone = dirty.clone();
         let handle = InvalidationHandler::new(move || dirty_clone.set(true));

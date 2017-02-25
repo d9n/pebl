@@ -58,6 +58,16 @@ fn can_chain_different_expression_outputs() {
     assert_that(p_dest.get()).is_true();
 }
 
+#[test]
+fn modify_inner_triggers_expression_update() {
+    let mut p = Property::new(String::from("   Hello"));
+    let e = p.trim();
+    assert_that(&e.get()).is_equal_to(String::from("Hello"));
+
+    p.modify_inner().push_str(", World     ");
+    assert_that(&e.get()).is_equal_to(String::from("Hello, World"));
+}
+
 mod logic {
     use spectral::prelude::*;
     use pebl::prelude::*;
