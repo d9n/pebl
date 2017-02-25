@@ -1,11 +1,15 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Cargo test (verbose)" type="CargoCommandRunConfiguration" factoryName="Cargo Command" singleton="true" show_console_on_std_err="false" show_console_on_std_out="false">
-    <option name="additionalArguments" value="-- --nocapture" />
-    <option name="command" value="test" />
-    <option name="environmentVariables">
-      <map />
-    </option>
-    <option name="printBacktrace" value="true" />
+    <parameters>
+      <option name="additionalArguments">
+        <list />
+      </option>
+      <option name="command" value="test" />
+      <option name="environmentVariables">
+        <map />
+      </option>
+      <option name="printBacktrace" value="true" />
+    </parameters>
     <module name="pebl" />
     <method />
   </configuration>
