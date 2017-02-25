@@ -10,7 +10,7 @@ pub fn len<E: IntoExpression<String>>(value: E) -> UnaryExpression<String, usize
     ::expr::unary(value, |val| val.len())
 }
 
-pub fn to_string<T: fmt::Display + PartialEq + Clone, E: IntoExpression<T>>(value: E) -> UnaryExpression<T, String> {
+pub fn to_string<T: fmt::Display + PartialEq, E: IntoExpression<T>>(value: E) -> UnaryExpression<T, String> {
     ::expr::unary(value, |val| String::from(format!("{0}", val)))
 }
 

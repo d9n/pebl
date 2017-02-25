@@ -11,11 +11,11 @@ use std::fmt;
 
 use obsv::InvalidationHandler;
 
-pub trait IntoExpression<T: PartialEq + Clone> {
+pub trait IntoExpression<T: PartialEq> {
     fn into_expr(self) -> Box<Expression<T>>;
 }
 
-pub trait Expression<T: PartialEq + Clone>: IntoExpression<T> {
+pub trait Expression<T: PartialEq>: IntoExpression<T> {
     fn try_get(&self) -> Option<T>;
     fn get(&self) -> T {
         self.try_get().unwrap()
@@ -23,7 +23,7 @@ pub trait Expression<T: PartialEq + Clone>: IntoExpression<T> {
     fn add_invalidation_handler(&self, handler: &InvalidationHandler);
 }
 
-pub trait CoreExpressions<T: PartialEq + Clone>: IntoExpression<T> where Self: Sized {
+pub trait CoreExpressions<T: PartialEq>: IntoExpression<T> where Self: Sized {
     // logic
 
     fn and<E: IntoExpression<bool>>(self, rhs: E) -> BinaryExpression<bool, bool, bool>
@@ -150,7 +150,7 @@ pub trait CoreExpressions<T: PartialEq + Clone>: IntoExpression<T> where Self: S
 }
 
 pub fn unary<I, O, E, F>(src: E, f: F) -> UnaryExpression<I, O>
-    where I: 'static + PartialEq + Clone, O: 'static + PartialEq + Clone, E: IntoExpression<I>, F: 'static + Fn(&I) -> O {
+    where I: 'static + PartialEq, O: 'static + PartialEq, E: IntoExpression<I>, F: 'static + Fn(&I) -> O {
     UnaryExpression {
         src: src.into_expr(),
         f: Box::new(f),
@@ -158,7 +158,7 @@ pub fn unary<I, O, E, F>(src: E, f: F) -> UnaryExpression<I, O>
 }
 
 pub fn binary<I1, I2, O, E1, E2, F>(lhs: E1, rhs: E2, f: F) -> BinaryExpression<I1, I2, O>
-    where I1: 'static + PartialEq + Clone, I2: 'static + PartialEq + Clone, O: 'static + PartialEq + Clone, E1: IntoExpression<I1>, E2: IntoExpression<I2>, F: 'static + Fn(&I1, &I2) -> O {
+    where I1: 'static + PartialEq, I2: 'static + PartialEq, O: 'static + PartialEq, E1: IntoExpression<I1>, E2: IntoExpression<I2>, F: 'static + Fn(&I1, &I2) -> O {
     BinaryExpression {
         lhs: lhs.into_expr(),
         rhs: rhs.into_expr(),
@@ -166,18 +166,18 @@ pub fn binary<I1, I2, O, E1, E2, F>(lhs: E1, rhs: E2, f: F) -> BinaryExpression<
     }
 }
 
-pub struct UnaryExpression<I: 'static + PartialEq + Clone, O: 'static + PartialEq + Clone> {
+pub struct UnaryExpression<I: 'static + PartialEq, O: 'static + PartialEq> {
     src: Box<Expression<I>>,
     f: Box<Fn(&I) -> O>,
 }
 
-impl<I: 'static + PartialEq + Clone, O: 'static + PartialEq + Clone> IntoExpression<O> for UnaryExpression<I, O> {
+impl<I: 'static + PartialEq, O: 'static + PartialEq> IntoExpression<O> for UnaryExpression<I, O> {
     fn into_expr(self) -> Box<Expression<O>> {
         Box::new(self)
     }
 }
 
-impl<I: 'static + PartialEq + Clone, O: 'static + PartialEq + Clone> Expression<O> for UnaryExpression<I, O> {
+impl<I: 'static + PartialEq, O: 'static + PartialEq> Expression<O> for UnaryExpression<I, O> {
     fn try_get(&self) -> Option<O> {
         self.src.try_get().map(|val| (self.f)(&val))
     }
@@ -187,23 +187,23 @@ impl<I: 'static + PartialEq + Clone, O: 'static + PartialEq + Clone> Expression<
     }
 }
 
-impl<I: 'static + PartialEq + Clone, O: 'static + PartialEq + Clone> CoreExpressions<O> for UnaryExpression<I, O> {
+impl<I: 'static + PartialEq, O: 'static + PartialEq> CoreExpressions<O> for UnaryExpression<I, O> {
     // Default implementations are fine
 }
 
-pub struct BinaryExpression<I1: 'static + PartialEq + Clone, I2: 'static + PartialEq + Clone, O: 'static + PartialEq + Clone> {
+pub struct BinaryExpression<I1: 'static + PartialEq, I2: 'static + PartialEq, O: 'static + PartialEq> {
     lhs: Box<Expression<I1>>,
     rhs: Box<Expression<I2>>,
     f: Box<Fn(&I1, &I2) -> O>,
 }
 
-impl<I1: 'static + PartialEq + Clone, I2: 'static + PartialEq + Clone, O: 'static + PartialEq + Clone> IntoExpression<O> for BinaryExpression<I1, I2, O> {
+impl<I1: 'static + PartialEq, I2: 'static + PartialEq, O: 'static + PartialEq> IntoExpression<O> for BinaryExpression<I1, I2, O> {
     fn into_expr(self) -> Box<Expression<O>> {
         Box::new(self)
     }
 }
 
-impl<I1: 'static + PartialEq + Clone, I2: 'static + PartialEq + Clone, O: 'static + PartialEq + Clone> Expression<O> for BinaryExpression<I1, I2, O> {
+impl<I1: 'static + PartialEq, I2: 'static + PartialEq, O: 'static + PartialEq> Expression<O> for BinaryExpression<I1, I2, O> {
     fn try_get(&self) -> Option<O> {
         let (lhs_opt, rhs_opt) = (self.lhs.try_get(), self.rhs.try_get());
         if lhs_opt.is_none() || rhs_opt.is_none() { return None }
@@ -216,4 +216,4 @@ impl<I1: 'static + PartialEq + Clone, I2: 'static + PartialEq + Clone, O: 'stati
     }
 }
 
-impl<I1: 'static + PartialEq + Clone, I2: 'static + PartialEq + Clone, O: 'static + PartialEq + Clone> CoreExpressions<O> for BinaryExpression<I1, I2, O> {}
+impl<I1: 'static + PartialEq, I2: 'static + PartialEq, O: 'static + PartialEq> CoreExpressions<O> for BinaryExpression<I1, I2, O> {}

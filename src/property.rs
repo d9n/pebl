@@ -4,19 +4,19 @@ use std::rc::Rc;
 use obsv::{InvalidationHandler, ModifyInnerRef, Observable, ObservablePtr};
 use expr::{CoreExpressions, Expression, IntoExpression};
 
-struct Binding<T: PartialEq + Clone> {
+struct Binding<T: PartialEq> {
     pub expr: Box<Expression<T>>,
     #[allow(dead_code)] // Needed to keep weak ref alive
     handle: InvalidationHandler,
     dirty: Rc<Cell<bool>>,
 }
 
-pub struct Property<T: PartialEq + Clone> {
+pub struct Property<T: PartialEq> {
     value: Observable<T>,
     bound_to: Option<Binding<T>>,
 }
 
-impl<T: 'static + PartialEq + Clone> Property<T> {
+impl<T: 'static + PartialEq> Property<T> {
     pub fn new(value: T) -> Property<T> {
         Property { value: Observable::new(value), bound_to: None }
     }
@@ -62,11 +62,11 @@ impl<T: 'static + PartialEq + Clone> Property<T> {
     }
 }
 
-struct PassthruExpression<T: PartialEq + Clone> {
+struct PassthruExpression<T: PartialEq> {
     src: ObservablePtr<T>,
 }
 
-impl<T: PartialEq + Clone> PassthruExpression<T> {
+impl<T: PartialEq> PassthruExpression<T> {
     pub fn new(src: &Observable<T>) -> Self {
         PassthruExpression { src: ObservablePtr::new(src) }
     }
@@ -91,13 +91,13 @@ impl<T: 'static + PartialEq + Clone> Expression<T> for PassthruExpression<T> {
 }
 
 
-impl<T: 'static + PartialEq + Clone + Default> Default for Property<T> {
+impl<T: 'static + PartialEq + Default> Default for Property<T> {
     fn default() -> Self {
         Property::new(Default::default())
     }
 }
 
-impl<T: PartialEq + Clone + Default> Property<T> {
+impl<T: PartialEq + Default> Property<T> {
     pub fn clear(&mut self) {
         self.value.clear();
     }
@@ -120,7 +120,7 @@ impl<'a, T: 'static + PartialEq + Clone> CoreExpressions<T> for &'a Property<T> 
     // Default implementations are fine
 }
 
-impl<T: 'static + fmt::Debug + Clone + PartialEq> fmt::Debug for Property<T> {
+impl<T: 'static + fmt::Debug + PartialEq> fmt::Debug for Property<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Property {{ {:?} }}", self.get())
     }
