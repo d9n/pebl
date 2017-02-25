@@ -100,13 +100,22 @@ impl<T: PartialEq + Clone + Default> Property<T> {
     }
 }
 
+impl Property<bool> {
+    pub fn invert(&mut self) {
+        let val = *self.get();
+        self.set(!val);
+    }
+}
+
 impl<'a, T: 'static + PartialEq + Clone> IntoExpression<T> for &'a Property<T> {
     fn into_expr(self) -> Box<Expression<T>> {
         Box::new(PassthruExpression::new(&self.value))
     }
 }
 
-impl<'a, T: 'static + PartialEq + Clone> CoreExpressions<T> for &'a Property<T> {}
+impl<'a, T: 'static + PartialEq + Clone> CoreExpressions<T> for &'a Property<T> {
+    // Default implementations are fine
+}
 
 impl<T: 'static + fmt::Debug + Clone + PartialEq> fmt::Debug for Property<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

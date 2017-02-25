@@ -105,3 +105,14 @@ fn property_can_bind_to_expression() {
     p2.set(0);
     assert_that(p_dest.get()).is_equal_to(&0);
 }
+
+#[test]
+fn bool_property_can_invert() {
+    let mut p = Property::new(true);
+
+    p.invert();
+    assert_that(p.get()).is_false();
+
+    p.invert();
+    assert_that(p.get()).is_true();
+}

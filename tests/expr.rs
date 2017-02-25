@@ -423,6 +423,31 @@ mod text {
     use pebl::prelude::*;
 
     #[test]
+    fn is_empty_works() {
+        let mut p = Property::new(String::from(""));
+
+        let e = expr::text::is_empty(&p);
+        assert_that(&e.get()).is_true();
+
+        p.set(String::from("Hello"));
+        assert_that(&e.get()).is_false();
+
+        p.clear();
+        assert_that(&e.get()).is_true();
+    }
+
+    #[test]
+    fn len_expr_works() {
+        let mut p = Property::new(String::from(""));
+
+        let e = expr::text::len(&p);
+        assert_that(&e.get()).is_equal_to(&0);
+
+        p.set(String::from("Hello"));
+        assert_that(&e.get()).is_equal_to(&5);
+    }
+
+    #[test]
     fn to_string_expr_works() {
         {
             let mut p_int = Property::new(10);
@@ -445,13 +470,19 @@ mod text {
     }
 
     #[test]
-    fn len_expr_works() {
-        let mut p = Property::new(String::from(""));
+    fn trim_expr_works() {
+        let mut p = Property::new(String::from("Hello"));
 
-        let e = expr::text::len(&p);
-        assert_that(&e.get()).is_equal_to(&0);
+        let e = expr::text::trim(&p);
+        assert_that(&e.get()).is_equal_to(String::from("Hello"));
 
-        p.set(String::from("Hello"));
-        assert_that(&e.get()).is_equal_to(&5);
+        p.set(String::from("   Hello"));
+        assert_that(&e.get()).is_equal_to(String::from("Hello"));
+
+        p.set(String::from("Hello   "));
+        assert_that(&e.get()).is_equal_to(String::from("Hello"));
+
+        p.set(String::from("   Hello   "));
+        assert_that(&e.get()).is_equal_to(String::from("Hello"));
     }
 }

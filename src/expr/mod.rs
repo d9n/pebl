@@ -138,6 +138,11 @@ pub trait CoreExpressions<T: PartialEq + Clone>: IntoExpression<T> where Self: S
         text::is_empty(self)
     }
 
+    fn trim(self) -> UnaryExpression<String, String>
+        where Self: IntoExpression<String> {
+        text::trim(self)
+    }
+
     fn to_string(self) -> UnaryExpression<T, String>
         where T: fmt::Display {
         text::to_string(self)
@@ -182,7 +187,9 @@ impl<I: 'static + PartialEq + Clone, O: 'static + PartialEq + Clone> Expression<
     }
 }
 
-impl<I: 'static + PartialEq + Clone, O: 'static + PartialEq + Clone> CoreExpressions<O> for UnaryExpression<I, O> {}
+impl<I: 'static + PartialEq + Clone, O: 'static + PartialEq + Clone> CoreExpressions<O> for UnaryExpression<I, O> {
+    // Default implementations are fine
+}
 
 pub struct BinaryExpression<I1: 'static + PartialEq + Clone, I2: 'static + PartialEq + Clone, O: 'static + PartialEq + Clone> {
     lhs: Box<Expression<I1>>,
