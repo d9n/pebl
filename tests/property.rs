@@ -65,6 +65,18 @@ fn property_takes_ownership() {
 }
 
 #[test]
+fn initialize_bound_to_expression() {
+    let mut p1 = Property::new(10);
+    let p2 = Property::new(32);
+    let p3 = Property::bound_to(p1.plus(&p2));
+
+    assert_that(p3.get()).is_equal_to(&42);
+
+    p1.set(-32);
+    assert_that(p3.get()).is_equal_to(&0);
+}
+
+#[test]
 fn property_class_implements_debug() {
     let p = Property::new(42);
 

@@ -21,6 +21,13 @@ impl<T: 'static + PartialEq> Property<T> {
         Property { value: Observable::new(value), bound_to: None }
     }
 
+    pub fn bound_to<E: IntoExpression<T>>(target: E) -> Property<T> {
+        let expr = target.into_expr();
+        let mut p = Property::new(expr.get());
+        p.bind_expr(expr);
+        p
+    }
+
     pub fn get(&self) -> &T {
         if let Some(ref binding) = self.bound_to {
             if binding.dirty.get() {
@@ -41,16 +48,7 @@ impl<T: 'static + PartialEq> Property<T> {
     }
 
     pub fn bind<E: IntoExpression<T>>(&mut self, target: E) {
-        let dirty = Rc::new(Cell::new(true));
-        let dirty_clone = dirty.clone();
-        let handle = InvalidationHandler::new(move || dirty_clone.set(true));
-        let binding = Binding {
-            expr: target.into_expr(),
-            handle: handle,
-            dirty: dirty,
-        };
-        binding.expr.add_invalidation_handler(&binding.handle);
-        self.bound_to = Some(binding);
+        self.bind_expr(target.into_expr());
     }
 
     pub fn unbind(&mut self) {
@@ -59,6 +57,19 @@ impl<T: 'static + PartialEq> Property<T> {
 
     pub fn is_bound(&self) -> bool {
         self.bound_to.is_some()
+    }
+
+    fn bind_expr(&mut self, expr: Box<Expression<T>>) {
+        let dirty = Rc::new(Cell::new(true));
+        let dirty_clone = dirty.clone();
+        let handle = InvalidationHandler::new(move || dirty_clone.set(true));
+        let binding = Binding {
+            expr: expr,
+            handle: handle,
+            dirty: dirty,
+        };
+        binding.expr.add_invalidation_handler(&binding.handle);
+        self.bound_to = Some(binding);
     }
 }
 
