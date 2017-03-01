@@ -68,6 +68,37 @@ fn modify_inner_triggers_expression_update() {
     assert_that(&e.get()).is_equal_to(String::from("Hello, World"));
 }
 
+#[test]
+fn unary_expression_works() {
+    use pebl::expr;
+
+    let mut p = Property::new(String::from("Hello, World"));
+    let e = expr::unary(&p, |p| p.to_lowercase());
+    assert_that(&e.get()).is_equal_to(String::from("hello, world"));
+
+    p.set(String::from("Goodbye!"));
+    assert_that(&e.get()).is_equal_to(String::from("goodbye!"));
+}
+
+#[test]
+fn binary_expression_works() {
+    use pebl::expr;
+
+    let mut p1 = Property::new(String::from("Hello"));
+    let p2 = Property::new(String::from("World"));
+    let e = expr::binary(&p1, &p2, |p1, p2| {
+        let mut s = p1.to_owned();
+        s.push_str(", ");
+        s.push_str(p2);
+        s
+    });
+    assert_that(&e.get()).is_equal_to(&String::from("Hello, World"));
+
+    p1.set(String::from("Goodbye"));
+    assert_that(&e.get()).is_equal_to(&String::from("Goodbye, World"));
+}
+
+
 mod logic {
     use spectral::prelude::*;
     use pebl::prelude::*;
