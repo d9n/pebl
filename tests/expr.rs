@@ -98,6 +98,25 @@ fn binary_expression_works() {
     assert_that(&e.get()).is_equal_to(&String::from("Goodbye, World"));
 }
 
+#[test]
+fn can_clone_expr() {
+    let mut p1 = Property::new(1);
+    let mut p2 = Property::new(2);
+    let mut p3 = Property::new(3);
+
+    let sum = p1.plus(p2.plus(&p3));
+    let p4 = Property::bound_to(sum.clone());
+    let p5 = Property::bound_to(sum);
+
+    assert_that(p4.get()).is_equal_to(&6);
+    assert_that(p5.get()).is_equal_to(&6);
+
+    p1.set(10);
+    p2.set(100);
+    p3.set(1000);
+    assert_that(p4.get()).is_equal_to(&1110);
+    assert_that(p5.get()).is_equal_to(&1110);
+}
 
 mod logic {
     use spectral::prelude::*;

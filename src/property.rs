@@ -5,7 +5,7 @@ use obsv::{InvalidationHandler, ModifyInnerRef, Observable, ObservablePtr};
 use expr::{CoreExpressions, Expression, IntoExpression};
 
 struct Binding<T: PartialEq> {
-    pub expr: Box<Expression<T>>,
+    pub expr: Rc<Expression<T>>,
     #[allow(dead_code)] // Needed to keep weak ref alive
     handle: InvalidationHandler,
     dirty: Rc<Cell<bool>>,
@@ -59,7 +59,7 @@ impl<T: 'static + PartialEq> Property<T> {
         self.bound_to.is_some()
     }
 
-    fn bind_expr(&mut self, expr: Box<Expression<T>>) {
+    fn bind_expr(&mut self, expr: Rc<Expression<T>>) {
         let dirty = Rc::new(Cell::new(true));
         let dirty_clone = dirty.clone();
         let handle = InvalidationHandler::new(move || dirty_clone.set(true));
@@ -84,8 +84,8 @@ impl<T: PartialEq> PassthruExpression<T> {
 }
 
 impl<T: 'static + PartialEq + Clone> IntoExpression<T> for PassthruExpression<T> {
-    fn into_expr(self) -> Box<Expression<T>> {
-        Box::new(self)
+    fn into_expr(self) -> Rc<Expression<T>> {
+        Rc::new(self)
     }
 }
 
@@ -122,8 +122,8 @@ impl Property<bool> {
 }
 
 impl<'a, T: 'static + PartialEq + Clone> IntoExpression<T> for &'a Property<T> {
-    fn into_expr(self) -> Box<Expression<T>> {
-        Box::new(PassthruExpression::new(&self.value))
+    fn into_expr(self) -> Rc<Expression<T>> {
+        Rc::new(PassthruExpression::new(&self.value))
     }
 }
 

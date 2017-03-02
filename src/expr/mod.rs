@@ -4,15 +4,22 @@ pub mod math;
 pub mod text;
 
 // For CoreExpressions
-use std::marker::Sized;
-use std::ops::{Add, Mul, Neg};
 use std::cmp::PartialOrd;
 use std::fmt;
+use std::marker::Sized;
+use std::ops::{Add, Mul, Neg};
+use std::rc::Rc;
 
 use obsv::InvalidationHandler;
 
 pub trait IntoExpression<T: PartialEq> {
-    fn into_expr(self) -> Box<Expression<T>>;
+    fn into_expr(self) -> Rc<Expression<T>>;
+}
+
+impl<T: PartialEq> IntoExpression<T> for Rc<Expression<T>> {
+    fn into_expr(self) -> Rc<Expression<T>> {
+        self
+    }
 }
 
 pub trait Expression<T: PartialEq>: IntoExpression<T> {
@@ -26,17 +33,17 @@ pub trait Expression<T: PartialEq>: IntoExpression<T> {
 pub trait CoreExpressions<T: PartialEq>: IntoExpression<T> where Self: Sized {
     // logic
 
-    fn and<E: IntoExpression<bool>>(self, rhs: E) -> BinaryExpression<bool, bool, bool>
+    fn and<E: IntoExpression<bool>>(self, rhs: E) -> Rc<Expression<bool>>
         where Self: IntoExpression<bool> {
         logic::and(self, rhs)
     }
 
-    fn not(self) -> UnaryExpression<bool, bool>
+    fn not(self) -> Rc<Expression<bool>>
         where Self: IntoExpression<bool> {
         logic::not(self)
     }
 
-    fn or<E: IntoExpression<bool>>(self, rhs: E) -> BinaryExpression<bool, bool, bool>
+    fn or<E: IntoExpression<bool>>(self, rhs: E) -> Rc<Expression<bool>>
         where Self: IntoExpression<bool> {
         logic::or(self, rhs)
     }
@@ -44,136 +51,140 @@ pub trait CoreExpressions<T: PartialEq>: IntoExpression<T> where Self: Sized {
 
     // math
 
-    fn abs(self) -> UnaryExpression<T, T>
-        where T: Copy + PartialOrd + Default + Neg<Output=T>, Self: IntoExpression<T> {
+    fn abs(self) -> Rc<Expression<T>>
+        where T: 'static + Copy + PartialOrd + Default + Neg<Output=T>, Self: IntoExpression<T> {
         math::abs(self)
     }
 
-    fn neg(self) -> UnaryExpression<T, T>
-        where T: Copy + Neg<Output=T>, Self: IntoExpression<T> {
+    fn neg(self) -> Rc<Expression<T>>
+        where T: 'static + Copy + Neg<Output=T>, Self: IntoExpression<T> {
         math::neg(self)
     }
 
-    fn plus<E: IntoExpression<T>>(self, rhs: E) -> BinaryExpression<T, T, T>
-        where T: Copy + Add<Output = T> {
+    fn plus<E: IntoExpression<T>>(self, rhs: E) -> Rc<Expression<T>>
+        where T: 'static + Copy + Add<Output = T> {
         math::plus(self, rhs)
     }
 
-    fn times<E: IntoExpression<T>>(self, rhs: E) -> BinaryExpression<T, T, T>
-        where T: Copy + Mul<Output = T> {
+    fn times<E: IntoExpression<T>>(self, rhs: E) -> Rc<Expression<T>>
+        where T: 'static + Copy + Mul<Output = T> {
         math::times(self, rhs)
     }
 
     // cmp
 
-    fn eq<E: IntoExpression<T>>(self, rhs: E) -> BinaryExpression<T, T, bool>
-        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+    fn eq<E: IntoExpression<T>>(self, rhs: E) -> Rc<Expression<bool>>
+        where T: 'static + PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
         cmp::eq(self, rhs)
     }
 
-    fn eq_val(self, val: T) -> UnaryExpression<T, bool>
-        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+    fn eq_val(self, val: T) -> Rc<Expression<bool>>
+        where T: 'static + PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
         cmp::eq_val(self, val)
     }
 
-    fn ne<E: IntoExpression<T>>(self, rhs: E) -> BinaryExpression<T, T, bool>
-        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+    fn ne<E: IntoExpression<T>>(self, rhs: E) -> Rc<Expression<bool>>
+        where T: 'static + PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
         cmp::ne(self, rhs)
     }
 
-    fn ne_val(self, val: T) -> UnaryExpression<T, bool>
-        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+    fn ne_val(self, val: T) -> Rc<Expression<bool>>
+        where T: 'static + PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
         cmp::ne_val(self, val)
     }
 
-    fn gt<E: IntoExpression<T>>(self, rhs: E) -> BinaryExpression<T, T, bool>
-        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+    fn gt<E: IntoExpression<T>>(self, rhs: E) -> Rc<Expression<bool>>
+        where T: 'static + PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
         cmp::gt(self, rhs)
     }
 
-    fn gt_val(self, val: T) -> UnaryExpression<T, bool>
-        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+    fn gt_val(self, val: T) -> Rc<Expression<bool>>
+        where T: 'static + PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
         cmp::gt_val(self, val)
     }
 
-    fn lt<E: IntoExpression<T>>(self, rhs: E) -> BinaryExpression<T, T, bool>
-        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+    fn lt<E: IntoExpression<T>>(self, rhs: E) -> Rc<Expression<bool>>
+        where T: 'static + PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
         cmp::lt(self, rhs)
     }
 
-    fn lt_val(self, val: T) -> UnaryExpression<T, bool>
-        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+    fn lt_val(self, val: T) -> Rc<Expression<bool>>
+        where T: 'static + PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
         cmp::lt_val(self, val)
     }
 
-    fn gte<E: IntoExpression<T>>(self, rhs: E) -> BinaryExpression<T, T, bool>
-        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+    fn gte<E: IntoExpression<T>>(self, rhs: E) -> Rc<Expression<bool>>
+        where T: 'static + PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
         cmp::gte(self, rhs)
     }
 
-    fn gte_val(self, val: T) -> UnaryExpression<T, bool>
-        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+    fn gte_val(self, val: T) -> Rc<Expression<bool>>
+        where T: 'static + PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
         cmp::gte_val(self, val)
     }
 
-    fn lte<E: IntoExpression<T>>(self, rhs: E) -> BinaryExpression<T, T, bool>
-        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+    fn lte<E: IntoExpression<T>>(self, rhs: E) -> Rc<Expression<bool>>
+        where T: 'static + PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
         cmp::lte(self, rhs)
     }
 
-    fn lte_val(self, val: T) -> UnaryExpression<T, bool>
-        where T: PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
+    fn lte_val(self, val: T) -> Rc<Expression<bool>>
+        where T: 'static + PartialEq + Copy + PartialOrd, Self: IntoExpression<T> {
         cmp::lte_val(self, val)
     }
 
     // text
 
-    fn len(self) -> UnaryExpression<String, usize>
+    fn len(self) -> Rc<Expression<usize>>
         where Self: IntoExpression<String> {
         text::len(self)
     }
 
-    fn is_empty(self) -> UnaryExpression<String, bool>
+    fn is_empty(self) -> Rc<Expression<bool>>
         where Self: IntoExpression<String> {
         text::is_empty(self)
     }
 
-    fn trim(self) -> UnaryExpression<String, String>
+    fn trim(self) -> Rc<Expression<String>>
         where Self: IntoExpression<String> {
         text::trim(self)
     }
 
-    fn to_string(self) -> UnaryExpression<T, String>
-        where T: fmt::Display {
+    fn to_string(self) -> Rc<Expression<String>>
+        where T: 'static + fmt::Display {
         text::to_string(self)
     }
 }
 
-pub fn unary<I, O, E, F>(src: E, f: F) -> UnaryExpression<I, O>
+impl<T: PartialEq> CoreExpressions<T> for Rc<Expression<T>> {
+    // Default implementation is fine
+}
+
+pub fn unary<I, O, E, F>(src: E, f: F) -> Rc<Expression<O>>
     where I: 'static + PartialEq, O: 'static + PartialEq, E: IntoExpression<I>, F: 'static + Fn(&I) -> O {
     UnaryExpression {
         src: src.into_expr(),
         f: Box::new(f),
-    }
+    }.into_expr()
 }
 
-pub fn binary<I1, I2, O, E1, E2, F>(lhs: E1, rhs: E2, f: F) -> BinaryExpression<I1, I2, O>
+pub fn binary<I1, I2, O, E1, E2, F>(lhs: E1, rhs: E2, f: F) -> Rc<Expression<O>>
     where I1: 'static + PartialEq, I2: 'static + PartialEq, O: 'static + PartialEq, E1: IntoExpression<I1>, E2: IntoExpression<I2>, F: 'static + Fn(&I1, &I2) -> O {
     BinaryExpression {
         lhs: lhs.into_expr(),
         rhs: rhs.into_expr(),
         f: Box::new(f),
-    }
+    }.into_expr()
 }
 
 pub struct UnaryExpression<I: 'static + PartialEq, O: 'static + PartialEq> {
-    src: Box<Expression<I>>,
+    src: Rc<Expression<I>>,
     f: Box<Fn(&I) -> O>,
 }
 
 impl<I: 'static + PartialEq, O: 'static + PartialEq> IntoExpression<O> for UnaryExpression<I, O> {
-    fn into_expr(self) -> Box<Expression<O>> {
-        Box::new(self)
+    fn into_expr(self) -> Rc<Expression<O>> {
+        Rc::new(self)
     }
 }
 
@@ -187,19 +198,15 @@ impl<I: 'static + PartialEq, O: 'static + PartialEq> Expression<O> for UnaryExpr
     }
 }
 
-impl<I: 'static + PartialEq, O: 'static + PartialEq> CoreExpressions<O> for UnaryExpression<I, O> {
-    // Default implementations are fine
-}
-
 pub struct BinaryExpression<I1: 'static + PartialEq, I2: 'static + PartialEq, O: 'static + PartialEq> {
-    lhs: Box<Expression<I1>>,
-    rhs: Box<Expression<I2>>,
+    lhs: Rc<Expression<I1>>,
+    rhs: Rc<Expression<I2>>,
     f: Box<Fn(&I1, &I2) -> O>,
 }
 
 impl<I1: 'static + PartialEq, I2: 'static + PartialEq, O: 'static + PartialEq> IntoExpression<O> for BinaryExpression<I1, I2, O> {
-    fn into_expr(self) -> Box<Expression<O>> {
-        Box::new(self)
+    fn into_expr(self) -> Rc<Expression<O>> {
+        Rc::new(self)
     }
 }
 
@@ -216,4 +223,3 @@ impl<I1: 'static + PartialEq, I2: 'static + PartialEq, O: 'static + PartialEq> E
     }
 }
 
-impl<I1: 'static + PartialEq, I2: 'static + PartialEq, O: 'static + PartialEq> CoreExpressions<O> for BinaryExpression<I1, I2, O> {}
