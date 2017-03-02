@@ -2,17 +2,17 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::rc::Weak;
 
-pub struct WeakList<T : ?Sized> {
+pub struct WeakList<T: ? Sized> {
     // Outer RefCell so that we can clean the vec in notify_invalidated
     items: RefCell<Vec<Weak<T>>>,
 }
 
-pub struct WeakListIterator<'a, T: 'a + ?Sized> {
+pub struct WeakListIterator<'a, T: 'a + ? Sized> {
     weak_list: &'a WeakList<T>,
     index: usize,
 }
 
-impl<T: ?Sized> WeakList<T> {
+impl<T: ? Sized> WeakList<T> {
     pub fn new() -> Self {
         WeakList::<T>::with_capacity(0)
     }
@@ -64,7 +64,7 @@ impl<T: ?Sized> WeakList<T> {
     }
 }
 
-impl<'a, T: ?Sized> Iterator for WeakListIterator<'a, T> {
+impl<'a, T: ? Sized> Iterator for WeakListIterator<'a, T> {
     type Item = Rc<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -90,7 +90,7 @@ impl<'a, T: ?Sized> Iterator for WeakListIterator<'a, T> {
     }
 }
 
-impl<'a, T: ?Sized> IntoIterator for &'a WeakList<T> {
+impl<'a, T: ? Sized> IntoIterator for &'a WeakList<T> {
     type Item = Rc<T>;
     type IntoIter = WeakListIterator<'a, T>;
 
@@ -132,7 +132,6 @@ mod private_api_tests {
         {
             let int2 = Rc::new(20);
             list.push(&int2);
-
         }
         assert_that(&list.len_no_clean()).is_equal_to(&2);
         assert_that(&list.len()).is_equal_to(&1);

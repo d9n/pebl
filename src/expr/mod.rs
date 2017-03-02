@@ -62,12 +62,12 @@ pub trait CoreExpressions<T: PartialEq>: IntoExpression<T> where Self: Sized {
     }
 
     fn plus<E: IntoExpression<T>>(self, rhs: E) -> Rc<Expression<T>>
-        where T: 'static + Copy + Add<Output = T> {
+        where T: 'static + Copy + Add<Output=T> {
         math::plus(self, rhs)
     }
 
     fn times<E: IntoExpression<T>>(self, rhs: E) -> Rc<Expression<T>>
-        where T: 'static + Copy + Mul<Output = T> {
+        where T: 'static + Copy + Mul<Output=T> {
         math::times(self, rhs)
     }
 

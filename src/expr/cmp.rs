@@ -57,6 +57,7 @@ pub fn lte<T, E1: IntoExpression<T>, E2: IntoExpression<T>>(lhs: E1, rhs: E2) ->
     where T: 'static + PartialEq + Copy + PartialOrd {
     ::expr::binary(lhs, rhs, |&val1, &val2| val1 <= val2)
 }
+
 pub fn lte_val<T, E: IntoExpression<T>>(lhs: E, rhs: T) -> Rc<Expression<bool>>
     where T: 'static + PartialEq + Copy + PartialOrd {
     ::expr::unary(lhs, move |&val| val <= rhs)

@@ -54,7 +54,7 @@ fn value_clear() {
 fn value_takes_ownership() {
     let range: Vec<_> = (0..100).collect();
     let _ = Observable::new(range);
-//    let range_already_taken = range; // As expected, uncommenting causes compile error
+    //    let range_already_taken = range; // As expected, uncommenting causes compile error
 }
 
 #[test]
@@ -147,6 +147,7 @@ fn dropping_observable_triggers_invalidation_handlers_on_last_time() {
     drop(o);
     assert_that(&count.get()).is_equal_to(&1);
 }
+
 #[test]
 fn value_classes_implement_debug() {
     let p = Observable::new(42);

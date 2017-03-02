@@ -61,7 +61,7 @@ fn property_clear() {
 fn property_takes_ownership() {
     let range: Vec<_> = (0..100).collect();
     let _ = Property::new(range);
-//    let range_already_taken = range; // As expected, uncommenting causes compile error
+    //    let range_already_taken = range; // As expected, uncommenting causes compile error
 }
 
 #[test]

@@ -338,7 +338,7 @@ impl<'a, T: fmt::Debug + PartialEq> fmt::Debug for ObservableMutRef<'a, T> {
     }
 }
 
-impl<T: fmt::Debug + PartialEq > fmt::Debug for ObservablePtr<T> {
+impl<T: fmt::Debug + PartialEq> fmt::Debug for ObservablePtr<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         return match self.try_deref() {
             None => write!(f, "*Observable {{ null }}"),
