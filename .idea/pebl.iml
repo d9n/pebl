@@ -5,7 +5,7 @@
     <content url="file://$MODULE_DIR$" />
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="Rust &lt;pebl&gt;" level="project" />
     <orderEntry type="library" name="Cargo &lt;pebl&gt;" level="project" />
+    <orderEntry type="library" name="Rust &lt;pebl&gt;" level="project" />
   </component>
 </module>
