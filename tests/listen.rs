@@ -16,7 +16,7 @@ fn listener_with_multiple_types_works() {
     let listen_count = Rc::new(Cell::new(0));
     {
         let listen_count = listen_count.clone();
-        l.listen_with(move || listen_count.set(listen_count.get() + 1)).to(&p_int).and(&p_str).and(&p_bool);
+        l.listen_to(&p_int).and(&p_str).and(&p_bool).with(move || listen_count.set(listen_count.get() + 1));
     }
 
     assert_that(&listen_count.get()).is_equal_to(&0);
