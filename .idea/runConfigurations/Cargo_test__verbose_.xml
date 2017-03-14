@@ -2,7 +2,10 @@
   <configuration default="false" name="Cargo test (verbose)" type="CargoCommandRunConfiguration" factoryName="Cargo Command" singleton="true" show_console_on_std_err="false" show_console_on_std_out="false">
     <parameters>
       <option name="additionalArguments">
-        <list />
+        <list>
+          <option value="--" />
+          <option value="--nocapture" />
+        </list>
       </option>
       <option name="command" value="test" />
       <option name="environmentVariables">
