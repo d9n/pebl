@@ -1,28 +1,76 @@
+//! A module which contains the `WeakList<T>` class. While a useful class in its own right, it is
+//! mostly used as an implementation detail for this crate and, as such, is not exposed directly
+//! through the `prelude` module.
+
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::rc::Weak;
 
+/// A vector of weak references, which will automatically be cleaned up when the values being
+/// referenced are dropped.
+///
+/// # Example
+///
+/// ```
+/// use std::rc::Rc;
+/// use pebl::weak::WeakList;
+///
+/// let mut list = WeakList::<i32>::new();
+/// {
+///     let item1 = Rc::new(1);
+///     let item2 = Rc::new(2);
+///     list.push(&item1);
+///     list.push(&item2);
+///     assert_eq!(2, list.len());
+/// }
+/// assert_eq!(0, list.len());
+/// ```
+///
+/// To walk over a `WeakList<T>`, upgrade it first:
+///
+/// ```
+/// use std::rc::Rc;
+/// use pebl::weak::WeakList;
+///
+/// let mut list = WeakList::<i32>::new();
+/// let item1 = Rc::new(1); list.push(&item1);
+/// let item2 = Rc::new(2); list.push(&item2);
+/// let mut sum = 0;
+/// for val in list.upgrade() {
+///     sum += *val;
+/// }
+/// assert_eq!(3, sum);
+/// ```
 pub struct WeakList<T: ? Sized> {
     // Outer RefCell so that we can clean the vec in notify_invalidated
     items: RefCell<Vec<Weak<T>>>,
 }
 
-pub struct WeakListIterator<'a, T: 'a + ? Sized> {
-    weak_list: &'a WeakList<T>,
-    index: usize,
-}
-
 impl<T: ? Sized> WeakList<T> {
+    /// Construct a new, empty list.
     pub fn new() -> Self {
         WeakList::<T>::with_capacity(0)
     }
 
+    /// Construct a new list with initial capacity, similar to `Vec<T>.with_capacity()`.
     pub fn with_capacity(capacity: usize) -> Self {
         WeakList { items: RefCell::new(Vec::with_capacity(capacity)) }
     }
 
+    /// Construct a new list, populated with initial values.
+    ///
+    /// # Example
+    ///
+    /// ```
+    ///     use std::rc::Rc;
+    ///     use pebl::weak::WeakList;
+    ///
+    ///     let slice = &[Rc::new(1), Rc::new(2), Rc::new(3)];
+    ///     let list = WeakList::of(slice);
+    ///     assert_eq!(3, list.len());
+    /// ```
     pub fn of(items: &[Rc<T>]) -> Self {
-        let mut weak_vec: Vec<Weak<T>> = Vec::new();
+        let mut weak_vec: Vec<Weak<T>> = Vec::with_capacity(items.len());
         for item in items {
             weak_vec.push(Rc::downgrade(item))
         }
@@ -30,72 +78,106 @@ impl<T: ? Sized> WeakList<T> {
         WeakList { items: RefCell::new(weak_vec) }
     }
 
+    /// Add a value to the tail-end of this list.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    ///     use std::rc::Rc;
+    ///     use pebl::weak::WeakList;
+    ///
+    ///     let mut list = WeakList::<i32>::new();
+    ///     let one = Rc::new(1);
+    ///     list.push(&one);
+    ///     assert_eq!(1, list.len());
+    /// ```
+    ///
+    /// Remember, this list does not keep strong references to its values, so trying to push a
+    /// temporary value onto it would be like trying to hold onto smoke:
+    ///
+    /// ```
+    ///     use std::rc::Rc;
+    ///     use pebl::weak::WeakList;
+    ///
+    ///     let mut list = WeakList::<i32>::new();
+    ///     list.push(&Rc::new(1));
+    ///     assert_eq!(0, list.len());
+    /// ```
     pub fn push(&mut self, item: &Rc<T>) {
         self.items.borrow_mut().push(Rc::downgrade(item));
     }
 
-    pub fn iter(&self) -> WeakListIterator<T> {
-        return WeakListIterator { weak_list: &self, index: 0 }
-    }
-
+    /// Create a copy of this weak list that holds only its strong references.
+    ///
+    /// It is useful to call this method anytime you want to iterate over this list.
+    ///
+    /// # Example
+    /// ```
+    ///     use std::rc::Rc;
+    ///     use pebl::weak::WeakList;
+    ///
+    ///     let slice = &[Rc::new(1), Rc::new(2), Rc::new(3)];
+    ///     let weak_list = WeakList::of(slice);
+    ///     let mut sum = 0;
+    ///     for value in weak_list.upgrade() {
+    ///         sum += *value;
+    ///     }
+    ///     assert_eq!(6, sum);
+    /// ```
     pub fn upgrade(&self) -> Vec<Rc<T>> {
-        let mut v = Vec::<Rc<T>>::new();
-        for item in self.iter() {
-            v.push(item);
+        self.clean();
+        let items = self.items.borrow();
+        let mut v = Vec::<Rc<T>>::with_capacity(items.len());
+
+        for weak_item in &(*items) {
+            if let Some(i) = weak_item.upgrade() {
+                v.push(i);
+            }
         }
         v
     }
 
+    /// Consume this weak list, converting into a strong list.
+    ///
+    /// # Example
+    /// ```
+    ///     use std::rc::Rc;
+    ///     use pebl::weak::WeakList;
+    ///
+    ///     let slice = &[Rc::new(1), Rc::new(2), Rc::new(3)];
+    ///     let weak_list = WeakList::of(slice);
+    ///     let strong_list = weak_list.upgrade_owned();
+    ///     // weak_list.push(&Rc::new(4)); // Cannot uncomment: weak_list was consumed
+    ///     let mut sum = 0;
+    ///     for value in strong_list {
+    ///         sum += *value;
+    ///     }
+    ///     assert_eq!(6, sum);
+    /// ```
+    pub fn upgrade_owned(self) -> Vec<Rc<T>> {
+        self.upgrade()
+    }
+
+    /// Return the number of *strong* references in this list. That is, if there were originally
+    /// 5 items added but 3 have since been deallocated, `len` will return 2.
     pub fn len(&self) -> usize {
         self.clean();
         self.len_no_clean()
     }
 
+    /// Return the capacity of this list, similar to [`Vec<T>`][`capacity`]
     pub fn capacity(&self) -> usize {
         self.items.borrow().capacity()
     }
 
+    /// Return the current length of this list, before calling `clean` on it.
     fn len_no_clean(&self) -> usize {
         self.items.borrow().len()
     }
 
+    /// Remove dead references from this list
     fn clean(&self) {
         self.items.borrow_mut().retain(|o| { return o.upgrade().is_some() });
-    }
-}
-
-impl<'a, T: ? Sized> Iterator for WeakListIterator<'a, T> {
-    type Item = Rc<T>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        {
-            let items = self.weak_list.items.borrow();
-
-            loop {
-                if self.index >= items.len() {
-                    break;
-                }
-
-                let weak_item = &items[self.index];
-                self.index += 1;
-
-                if let Some(i) = weak_item.upgrade() {
-                    return Some(i);
-                }
-            }
-        }
-
-        self.weak_list.clean(); // Only do after items is out of scope
-        None
-    }
-}
-
-impl<'a, T: ? Sized> IntoIterator for &'a WeakList<T> {
-    type Item = Rc<T>;
-    type IntoIter = WeakListIterator<'a, T>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter()
     }
 }
 
@@ -108,7 +190,7 @@ mod private_api_tests {
     use super::*;
 
     #[test]
-    fn weak_list_is_cleaned_after_iterated() {
+    fn weak_list_is_cleaned_after_upgrade() {
         let mut list = WeakList::<i32>::new();
         let int1 = Rc::new(10);
         list.push(&int1);
@@ -120,7 +202,7 @@ mod private_api_tests {
         }
         assert_that(&list.len_no_clean()).is_equal_to(&2);
 
-        for _ in list.iter() {} // Once iteration is done, dead weak refs are removed
+        list.upgrade();
         assert_that(&list.len_no_clean()).is_equal_to(&1);
     }
 
@@ -135,24 +217,6 @@ mod private_api_tests {
         }
         assert_that(&list.len_no_clean()).is_equal_to(&2);
         assert_that(&list.len()).is_equal_to(&1);
-    }
-
-    #[test]
-    fn weak_list_ref_can_be_used_in_for_loop() {
-        let mut list = WeakList::<&str>::new();
-        let item1 = Rc::new("0");
-        let item2 = Rc::new("1");
-        list.push(&item1);
-        list.push(&item2);
-
-        let mut i = 0;
-        for item in &list {
-            let expected: &str = &i.to_string();
-            let actual: &str = *item;
-            assert_that(&actual).is_equal_to(&expected);
-            i += 1
-        }
-        assert_that(&i).is_equal_to(2);
     }
 
     #[test]

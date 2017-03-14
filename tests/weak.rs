@@ -15,10 +15,10 @@ fn weak_list_converted_to_strong_using_upgrade() {
         let int2 = Rc::new(20);
         list.push(&int2);
 
-        let u = &list.upgrade();
-        assert_that(&u.len()).is_equal_to(&2);
-        assert_that(&u[0]).is_equal_to(&int1);
-        assert_that(&u[1]).is_equal_to(&int2);
+        let strong_refs = list.upgrade();
+        assert_that(&strong_refs.len()).is_equal_to(&2);
+        assert_that(&strong_refs[0]).is_equal_to(&int1);
+        assert_that(&strong_refs[1]).is_equal_to(&int2);
     }
     assert_that(&list.upgrade().len()).is_equal_to(&1);
 }
@@ -44,14 +44,14 @@ fn can_iter_weak_list() {
         list.push(&int4);
 
         let mut sum = 0;
-        for i in list.iter() {
+        for i in list.upgrade() {
             sum += *i;
         }
         assert_that(&sum).is_equal_to(&100);
     }
 
     let mut sum = 0;
-    for i in list.iter() {
+    for i in list.upgrade() {
         sum += *i;
     }
     assert_that(&sum).is_equal_to(&60);
@@ -72,8 +72,8 @@ fn can_create_weak_list_with_struct() {
     list.push(&pt2);
     list.push(&pt3);
 
-    let pt_sum = list.iter().fold(Pt { x: 0, y: 0 },
-                                  |pt1, pt2| { Pt { x: pt1.x + pt2.x, y: pt1.y + pt2.y } });
+    let pt_sum = list.upgrade().into_iter().fold(Pt { x: 0, y: 0 },
+                                                 |pt1, pt2| { Pt { x: pt1.x + pt2.x, y: pt1.y + pt2.y } });
 
     assert_that(&pt_sum.x).is_equal_to(&6);
     assert_that(&pt_sum.y).is_equal_to(&60);
@@ -85,7 +85,7 @@ fn can_create_weak_list_from_slice() {
     let list = WeakList::of(slice);
 
     let mut sum = 0;
-    for i in list.iter() {
+    for i in list.upgrade() {
         sum += *i;
     }
     assert_that(&sum).is_equal_to(&6);

@@ -85,7 +85,7 @@ impl<T: PartialEq> ObservableData<T> {
     }
 
     fn fire_invalidated(&mut self) {
-        for callback in &self.on_invalidated {
+        for callback in self.on_invalidated.upgrade() {
             callback();
         }
     }
