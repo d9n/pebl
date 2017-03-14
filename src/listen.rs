@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use expr::IntoExpression;
 use obsv::InvalidationHandler;
 
@@ -40,7 +38,7 @@ impl<'a> ListenChain<'a> {
     }
 
     pub fn with<F: 'static + Fn()>(self, f: F) {
-        let mut handler = InvalidationHandler::new(f);
+        let handler = InvalidationHandler::new(f);
         for r in &self.register_callbacks {
             r(&handler);
         }
