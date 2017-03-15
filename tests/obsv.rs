@@ -5,7 +5,7 @@ extern crate pebl;
 use std::cell::Cell;
 use std::rc::Rc;
 use spectral::prelude::*;
-use pebl::prelude::*;
+use pebl::obsv::{InvalidationHandler, Observable, ObservablePtr};
 
 #[test]
 fn default_values() {
